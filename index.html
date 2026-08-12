@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>2050 몬스터 도감</title>
+<meta name="description" content="2050년 우리 학교에 나타난 생명체를 설정하고, AI로 그려보고, 대화를 나누며 다듬어 다시 그려보는 도구.">
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐾</text></svg>">
+<meta name="theme-color" content="#17C9AE">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cream:#F5F2FF;
+  --paper:#FFFFFF;
+  --mint:#17C9AE;
+  --mint-dark:#0EA790;
+  --mint-2:#B9F3E7;
+  --mint-3:#E1FBF5;
+  --violet:#8B5CF6;
+  --violet-dark:#7440E0;
+  --violet-2:#DCCBFA;
+  --violet-3:#F1E9FF;
+  --yellow:#FFC93C;
+  --yellow-dark:#F0AC00;
+  --ink:#2B2140;
+  --sub:#6E6482;
+  --line:#E3DEF7;
+  --shadow-sm:2px 2px 0 rgba(43,33,64,.9);
+  --shadow:4px 4px 0 rgba(43,33,64,.9);
+  --shadow-lg:6px 6px 0 rgba(43,33,64,.9);
+  --r-sm:10px;
+  --r:14px;
+  --r-lg:20px;
+  --r-xl:26px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:'Noto Sans KR',sans-serif;
+  background:var(--cream);
+  color:var(--ink);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+.title-font{font-family:'Black Han Sans',sans-serif;letter-spacing:-.2px;font-weight:400}
+button,input,textarea{font-family:inherit}
+
+.bg-decor{position:fixed;inset:0;overflow:hidden;z-index:-1;pointer-events:none}
+.bg-decor span{position:absolute;border-radius:50%;filter:blur(70px);opacity:.5}
+.bg-decor .b1{width:360px;height:360px;background:var(--mint-2);top:-120px;left:-120px}
+.bg-decor .b2{width:320px;height:320px;background:var(--violet-2);top:40%;right:-140px}
+.bg-decor .b3{width:260px;height:260px;background:var(--yellow);opacity:.25;bottom:-120px;left:20%}
+
+.app{max-width:680px;margin:0 auto;padding:24px 20px 100px;position:relative}
+
+/* ── 툴바 ── */
+.toolbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.btn-reset,.btn-export{
+  background:#fff;border:2px solid var(--ink);
+  color:var(--ink);padding:7px 14px;border-radius:99px;
+  font-size:12px;font-weight:700;cursor:pointer;transition:.15s;white-space:nowrap;
+  box-shadow:var(--shadow-sm);
+}
+.btn-reset:hover,.btn-export:hover:not(:disabled){transform:translate(-1px,-1px);box-shadow:3px 3px 0 rgba(43,33,64,.9)}
+.btn-reset:active,.btn-export:active:not(:disabled){transform:translate(1px,1px);box-shadow:1px 1px 0 rgba(43,33,64,.9)}
+.btn-export{color:var(--violet-dark)}
+.btn-export:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+
+/* ── 헤더 ── */
+.header{
+  position:relative;
+  text-align:center;padding:26px 20px 22px;
+  background:linear-gradient(135deg,var(--mint-2) 0%,var(--violet-2) 100%);
+  border:3px solid var(--ink);
+  border-radius:var(--r-xl);margin-bottom:22px;
+  box-shadow:var(--shadow-lg);
+  overflow:hidden;
+}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:6px;
+  background:#fff;border:2px solid var(--ink);
+  color:var(--violet-dark);font-size:12px;font-weight:800;letter-spacing:.2px;
+  padding:5px 14px;border-radius:99px;margin-bottom:12px;
+  box-shadow:var(--shadow-sm);
+}
+.header h1{
+  font-size:30px;margin:0 0 8px;color:var(--ink);
+}
+.header .sub{color:var(--ink);opacity:.72;font-size:13.5px;font-weight:500;margin:0;line-height:1.7}
+
+/* ── 진행 경로 ── */
+.progress-path{display:flex;align-items:center;justify-content:center;gap:0;margin-top:20px;position:relative}
+.path-node{display:flex;flex-direction:column;align-items:center;gap:6px;width:104px}
+.path-circle{
+  width:32px;height:32px;border-radius:50%;background:#fff;border:2.5px solid var(--ink);
+  color:var(--sub);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;
+  transition:.25s;font-family:'Black Han Sans',sans-serif;
+}
+.path-node.current .path-circle{background:var(--yellow);color:var(--ink);box-shadow:var(--shadow-sm)}
+.path-node.done .path-circle{background:var(--mint);color:#fff}
+.path-label{font-size:11px;color:var(--ink);opacity:.7;text-align:center;font-weight:700}
+.path-node.current .path-label{opacity:1}
+.path-line{flex:0 0 40px;height:3px;background:rgba(43,33,64,.18);margin:0 -6px 20px;position:relative;overflow:hidden;border-radius:2px}
+.path-line::after{content:'';position:absolute;inset:0;background:var(--mint);transform:scaleX(0);transform-origin:left;transition:.3s}
+.path-line.filled::after{transform:scaleX(1)}
+
+/* ── 화면 전환 ── */
+.screen{display:none}
+.screen.active{display:block;animation:screenIn .35s ease}
+@keyframes screenIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── 카드 공통 ── */
+.card{
+  background:var(--paper);border-radius:var(--r-lg);
+  border:2.5px solid var(--ink);
+  box-shadow:var(--shadow-lg);padding:24px 24px 26px;margin-bottom:16px;
+  position:relative;
+}
+.card h2{
+  font-size:20px;margin:0 0 4px;color:var(--ink);
+}
+.card .desc{color:var(--sub);font-size:13px;margin:0 0 18px;line-height:1.7;font-weight:500}
+
+/* ── 폼 ── */
+.field{margin-bottom:16px}
+.field label{display:flex;align-items:center;font-size:13px;font-weight:700;color:var(--ink);margin-bottom:7px}
+.field-icon{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:26px;height:26px;border-radius:50%;background:var(--mint-3);border:2px solid var(--ink);
+  margin-right:8px;flex:none;font-size:13px;line-height:1;
+}
+.field.optional .field-icon{background:var(--violet-3)}
+.field input,.field textarea{
+  width:100%;border:2px solid var(--ink);border-radius:var(--r-sm);
+  padding:10px 12px;font-size:14px;font-weight:500;color:var(--ink);background:#fff;
+  resize:vertical;line-height:1.5;transition:.15s;
+}
+.field textarea{min-height:52px}
+.field input:focus,.field textarea:focus{
+  outline:none;border-color:var(--violet);
+  box-shadow:0 0 0 3px rgba(139,92,246,.18);
+}
+.field .optional-tag{color:var(--sub);font-weight:400;font-size:11px;margin-left:5px}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+@media (max-width:560px){.grid-2{grid-template-columns:1fr}}
+
+.btn-main{
+  width:100%;margin-top:6px;border:2.5px solid var(--ink);border-radius:99px;
+  background:linear-gradient(180deg,var(--mint) 0%,var(--mint-dark) 100%);
+  color:#fff;font-size:16px;font-family:'Black Han Sans',sans-serif;letter-spacing:.3px;
+  padding:14px 20px;cursor:pointer;
+  box-shadow:var(--shadow);transition:.12s;display:flex;align-items:center;justify-content:center;gap:7px;
+}
+.btn-main:hover:not(:disabled){transform:translate(-1px,-1px);box-shadow:5px 5px 0 rgba(43,33,64,.9)}
+.btn-main:active:not(:disabled){transform:translate(2px,2px);box-shadow:1px 1px 0 rgba(43,33,64,.9)}
+.btn-main:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-main.spinning::before{
+  content:'';display:inline-block;width:14px;height:14px;
+  border:2.5px solid rgba(255,255,255,.5);border-top-color:#fff;border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.btn-secondary{
+  display:inline-flex;align-items:center;gap:6px;background:var(--violet-3);border:2px solid var(--ink);
+  color:var(--violet-dark);font-size:12.5px;font-weight:800;padding:8px 15px;border-radius:99px;cursor:pointer;
+  transition:.12s;margin:4px 0 14px;box-shadow:var(--shadow-sm);
+}
+.btn-secondary:hover:not(:disabled){transform:translate(-1px,-1px);box-shadow:3px 3px 0 rgba(43,33,64,.9)}
+.btn-secondary:active:not(:disabled){transform:translate(1px,1px);box-shadow:1px 1px 0 rgba(43,33,64,.9)}
+.btn-secondary:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+
+.done-msg{
+  text-align:center;color:var(--ink);font-size:13px;font-weight:600;padding:14px;
+  background:var(--mint-3);border:2px dashed var(--ink);border-radius:var(--r);line-height:1.7;margin-top:14px;
+}
+
+/* ── 결과 표시 ── */
+.result-frame{
+  width:100%;max-width:400px;margin:0 auto 14px;padding:10px;
+  background:linear-gradient(160deg,var(--mint-3),var(--violet-3));
+  border:2.5px solid var(--ink);border-radius:var(--r-lg);box-shadow:var(--shadow);
+}
+.result-frame.final{border-style:dashed;border-width:3px}
+.result-frame img{width:100%;border-radius:var(--r);display:block;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+.ribbon{
+  display:block;width:fit-content;margin:0 auto 14px;background:var(--yellow);color:var(--ink);
+  border:2px solid var(--ink);font-size:12px;font-weight:800;letter-spacing:.2px;padding:6px 16px;
+  border-radius:99px;box-shadow:var(--shadow-sm);
+}
+.result-summary{font-size:12.5px;color:var(--sub);line-height:1.8;margin:0 0 14px;text-align:center}
+.result-summary b{color:var(--ink);font-weight:800}
+
+.attempts-strip{display:flex;gap:8px;margin:0 0 12px;flex-wrap:wrap;justify-content:center}
+.attempt-thumb{position:relative;width:48px;height:48px;border-radius:8px;overflow:hidden;border:2px solid var(--ink);cursor:pointer;transition:.12s}
+.attempt-thumb:hover{transform:translateY(-2px)}
+.attempt-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.attempt-thumb.picked{border-color:var(--mint);box-shadow:var(--shadow-sm)}
+.attempt-thumb .n{
+  position:absolute;bottom:0;right:0;background:rgba(43,33,64,.75);color:#fff;
+  font-size:9px;padding:1px 4px;border-top-left-radius:6px;
+}
+.attempts-hint{font-size:11.5px;color:var(--sub);margin:-4px 0 14px;text-align:center}
+
+.stage-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:6px}
+.btn-download,.btn-retry{
+  display:inline-block;font-size:12px;font-weight:700;border-radius:99px;
+  padding:7px 15px;cursor:pointer;background:#fff;transition:.12s;border:2px solid var(--ink);
+  box-shadow:var(--shadow-sm);
+}
+.btn-download{color:var(--mint-dark)}
+.btn-download:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 rgba(43,33,64,.9)}
+.btn-retry{color:var(--violet-dark)}
+.btn-retry:hover:not(:disabled){transform:translate(-1px,-1px);box-shadow:3px 3px 0 rgba(43,33,64,.9)}
+.btn-retry:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+
+.change-note-box{background:var(--violet-3);border:2px solid var(--ink);border-radius:var(--r);padding:16px 16px 4px;margin-bottom:16px}
+.change-note-box label{color:var(--violet-dark)}
+.change-note-box textarea{background:#fff}
+.change-note-box.world-box{background:var(--mint-3)}
+.change-note-box.world-box label{color:var(--mint-dark)}
+
+.prompt-preview{
+  white-space:pre-wrap;font-size:11.5px;line-height:1.6;color:var(--sub);
+  background:var(--cream);border:2px dashed var(--ink);border-radius:var(--r-sm);
+  padding:10px 12px;max-height:220px;overflow-y:auto;
+}
+
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(10px);
+  background:var(--ink);color:#fff;font-size:13px;font-weight:600;padding:11px 18px;border-radius:99px;
+  box-shadow:0 6px 18px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:.25s;z-index:50;
+  max-width:88vw;text-align:center;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="bg-decor"><span class="b1"></span><span class="b2"></span><span class="b3"></span></div>
+<div class="app">
+
+  <div class="toolbar">
+    <button class="btn-export" id="exportBtn">📁 활동 내용 저장하기</button>
+    <button class="btn-reset" id="resetBtn">🔁 처음부터 다시 만들기</button>
+  </div>
+
+  <div class="header">
+    <span class="eyebrow">🔬 미확인생명체 연구소</span>
+    <h1 class="title-font">2050 몬스터 도감</h1>
+    <p class="sub">2050년, 우리 학교 곳곳에 정체를 알 수 없는 생명체가 나타나기 시작했다!<br>당신은 이 미확인생명체를 기록하는 연구원. 지금 발견한 개체를 도감에 등록하라!</p>
+    <div class="progress-path">
+      <div class="path-node" id="pathNode0"><span class="path-circle">1</span><span class="path-label">몬스터 구상</span></div>
+      <div class="path-line" id="pathLine"></div>
+      <div class="path-node" id="pathNode1"><span class="path-circle">2</span><span class="path-label">소환</span></div>
+    </div>
+  </div>
+
+  <!-- 화면 1: 몬스터 구상 -->
+  <section class="screen" id="screen-design">
+    <div class="card">
+      <h2 class="title-font">🧬 몬스터 구상</h2>
+      <p class="desc">설정카드에 적어둔 내용을 옮겨 적어주세요.</p>
+
+      <div class="field">
+        <label for="f-name"><span class="field-icon">🏷️</span>이 생명체의 이름은 무엇인가요?</label>
+        <input id="f-name" type="text" placeholder="예: 급식실도치">
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label for="f-habitat"><span class="field-icon">🌍</span>어디에서 사나요?</label>
+          <textarea id="f-habitat" placeholder="예: 급식실 냉장고 뒤 좁은 틈"></textarea>
+        </div>
+        <div class="field">
+          <label for="f-food"><span class="field-icon">🍖</span>무엇을 먹나요?</label>
+          <textarea id="f-food" placeholder="예: 잔반통에 남은 음식 찌꺼기"></textarea>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label for="f-personality"><span class="field-icon">💭</span>성격은 어떤가요?</label>
+          <textarea id="f-personality" placeholder="예: 겁이 많아서 사람이 오면 바로 숨어요"></textarea>
+        </div>
+        <div class="field">
+          <label for="f-ability"><span class="field-icon">⚡</span>어떤 능력이 있나요?</label>
+          <textarea id="f-ability" placeholder="예: 스트레스를 받으면 지독한 냄새를 뿜어요"></textarea>
+        </div>
+      </div>
+      <div class="field">
+        <label for="f-appearance"><span class="field-icon">👁️</span>생김새는 어떤가요?</label>
+        <textarea id="f-appearance" placeholder="예: 몸이 동그랗고 등에 가시가 나 있어요"></textarea>
+      </div>
+      <div class="field optional">
+        <label for="f-extra"><span class="field-icon">➕</span>그 외에 더 넣고 싶은 설정이 있나요?<span class="optional-tag">(선택)</span></label>
+        <textarea id="f-extra" placeholder="예: 급식 시간에만 움직여요 / 큰 소리에 예민해요"></textarea>
+      </div>
+
+      <button class="btn-main" id="genBtn1">✨ 이 생명체 소환하기</button>
+    </div>
+  </section>
+
+  <!-- 화면 2: 1차 결과 -->
+  <section class="screen" id="screen-firstResult">
+    <div class="card">
+      <h2 class="title-font">🖼️ 몬스터 구상 결과</h2>
+      <p class="desc">설정대로 그려봤어요.</p>
+      <div id="firstResultBody"></div>
+      <button class="btn-main" id="toChatBtn">다음: 소환 준비하기 →</button>
+    </div>
+  </section>
+
+  <!-- 화면 3: 소환 준비 -->
+  <section class="screen" id="screen-chat">
+    <div class="card">
+      <h2 class="title-font">🔮 소환 준비</h2>
+      <p class="desc">1차 결과를 보고 세계관을 넓히거나, 바꾸고 싶은 점을 정리해보세요.</p>
+
+      <div id="chatRefBody"></div>
+
+      <div class="field change-note-box world-box">
+        <label for="f-worldbuilding">🌌 확장된 세계관</label>
+        <textarea id="f-worldbuilding" placeholder="예: 혼자 살고 천적은 없어요. 급식실 배수구 청소를 안 해서 생겨났어요."></textarea>
+      </div>
+
+      <div class="field change-note-box">
+        <label for="f-changenote">📝 바뀐 점 정리 <span class="optional-tag">(선택)</span></label>
+        <textarea id="f-changenote" placeholder="예: 냄새를 뿜는 능력인데 그림엔 안 보여서, 몸 주변에 냄새 김이 나는 모습으로 바꿨어요"></textarea>
+      </div>
+
+      <div class="field-block">
+        <div class="flabel">🔍 이렇게 프롬프트가 만들어져요</div>
+        <div class="prompt-preview" id="promptPreview"></div>
+      </div>
+
+      <button class="btn-main" id="genBtn2">⚡ 정식으로 소환하기</button>
+    </div>
+  </section>
+
+  <!-- 화면 4: 최종 -->
+  <section class="screen" id="screen-final">
+    <div class="card">
+      <h2 class="title-font">🎉 정식 소환 완료</h2>
+      <p class="desc">AI가 그려준 모습이에요. 이걸 참고해서 다음 시간에 손으로 도감을 완성해봐요.</p>
+      <div id="finalBody"></div>
+      <div class="done-msg">🎊 이제 도감 카드 만들기는 다음 시간에 진행해요.</div>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const WORKER_URL = 'https://prompt-atelier-proxy.vercel.app';
+const MAX_STAGES = 2;
+const STAGE_LABELS = ['몬스터 구상','소환'];
+const REQUIRED_KEYS = ['name','habitat','food','personality','ability','appearance'];
+const FIELD_KEYS = [...REQUIRED_KEYS, 'extra'];
+const FIELD_TITLES = {name:'이름',habitat:'서식지',food:'먹이',personality:'성격',ability:'능력',appearance:'외형 특징',extra:'추가 설정'};
+
+const $ = id => document.getElementById(id);
+
+let state = {
+  fields: {name:'',habitat:'',food:'',personality:'',ability:'',appearance:'',extra:''},
+  changeNote: '',
+  worldbuilding: '',
+  stages: [],
+};
+let busy = false;
+let currentScreen = 'design';
+
+/* ── 저장: 설정 텍스트는 localStorage, 이미지 든 결과는 IndexedDB ── */
+function loadFields(){
+  try{
+    const raw = localStorage.getItem('monsterDexFields');
+    if(!raw) return;
+    const parsed = JSON.parse(raw);
+    if(parsed.fields) state.fields = Object.assign({name:'',habitat:'',food:'',personality:'',ability:'',appearance:'',extra:''}, parsed.fields);
+    if(typeof parsed.changeNote === 'string') state.changeNote = parsed.changeNote;
+    if(typeof parsed.worldbuilding === 'string') state.worldbuilding = parsed.worldbuilding;
+  }catch(e){}
+}
+function saveFields(){
+  try{
+    localStorage.setItem('monsterDexFields', JSON.stringify({fields: state.fields, changeNote: state.changeNote, worldbuilding: state.worldbuilding}));
+  }catch(e){}
+}
+
+const DB_NAME = 'monsterDexDB';
+const STORE_NAME = 'stages';
+const DB_KEY = 'v1';
+
+function openDB(){
+  return new Promise((resolve, reject)=>{
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = ()=> req.result.createObjectStore(STORE_NAME);
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function loadStages(){
+  try{
+    const db = await openDB();
+    return await new Promise((resolve, reject)=>{
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const req = tx.objectStore(STORE_NAME).get(DB_KEY);
+      req.onsuccess = ()=> resolve(req.result || []);
+      req.onerror = ()=> reject(req.error);
+    });
+  }catch(e){
+    console.error(e);
+    return [];
+  }
+}
+async function saveStages(){
+  try{
+    const db = await openDB();
+    await new Promise((resolve, reject)=>{
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).put(state.stages, DB_KEY);
+      tx.oncomplete = ()=> resolve();
+      tx.onerror = ()=> reject(tx.error);
+    });
+  }catch(e){
+    console.error(e);
+    toast('이미지 저장에 실패했어요. 새로고침하면 이 이미지가 사라질 수 있어요.');
+  }
+}
+async function clearStages(){
+  try{
+    const db = await openDB();
+    await new Promise((resolve, reject)=>{
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).delete(DB_KEY);
+      tx.oncomplete = ()=> resolve();
+      tx.onerror = ()=> reject(tx.error);
+    });
+  }catch(e){}
+}
+// 예전 버전(다시 그리기 기능 추가 전)엔 stage.image 하나만 있었음 → attempts 배열로 변환
+function migrateStages(rawStages){
+  let prevImage = null;
+  return rawStages.map((stage, i)=>{
+    const attempts = stage.attempts || (stage.image ? [stage.image] : []);
+    const isEvolution = i > 0;
+    const prompt = stage.prompt || buildPrompt(stage.fields, stage.changeNote || '', isEvolution, stage.worldbuilding || '');
+    const referenceImage = stage.referenceImage !== undefined ? stage.referenceImage : prevImage;
+    const pickedIndex = stage.pickedIndex !== undefined ? stage.pickedIndex : attempts.length - 1;
+    prevImage = attempts[pickedIndex] || null;
+    return {fields: Object.assign({extra:''}, stage.fields), changeNote: stage.changeNote || '', worldbuilding: stage.worldbuilding || '', prompt, referenceImage, attempts, pickedIndex};
+  });
+}
+
+function toast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(()=> t.classList.remove('show'), 2800);
+}
+function escapeHTML(s){
+  return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+function bindFieldInputs(){
+  FIELD_KEYS.forEach(key=>{
+    const el = $('f-' + key);
+    el.value = state.fields[key];
+    el.addEventListener('input', ()=>{
+      state.fields[key] = el.value;
+      saveFields();
+    });
+  });
+  const noteEl = $('f-changenote');
+  noteEl.value = state.changeNote;
+  noteEl.addEventListener('input', ()=>{
+    state.changeNote = noteEl.value;
+    saveFields();
+    updateGenBtn2State();
+  });
+
+  const worldEl = $('f-worldbuilding');
+  worldEl.value = state.worldbuilding;
+  worldEl.addEventListener('input', ()=>{
+    state.worldbuilding = worldEl.value;
+    saveFields();
+    updateGenBtn2State();
+  });
+}
+
+function updateGenBtn2State(){
+  $('genBtn2').disabled = !(state.changeNote.trim() || state.worldbuilding.trim());
+  renderPromptPreview();
+}
+
+/* ── 화면 전환 ── */
+function goTo(name){
+  currentScreen = name;
+  document.querySelectorAll('.screen').forEach(s=> s.classList.remove('active'));
+  $('screen-' + name).classList.add('active');
+  renderProgress();
+  window.scrollTo({top:0, behavior:'smooth'});
+  if(name === 'chat'){
+    updateGenBtn2State();
+  }
+}
+
+function renderProgress(){
+  const n = state.stages.length;
+  $('pathNode0').classList.toggle('done', n >= 1 && currentScreen !== 'design');
+  $('pathNode0').classList.toggle('current', currentScreen === 'design' || currentScreen === 'firstResult');
+  $('pathNode1').classList.toggle('done', currentScreen === 'final');
+  $('pathNode1').classList.toggle('current', currentScreen === 'chat');
+  $('pathLine').classList.toggle('filled', n >= 1);
+}
+
+function fieldSummaryHTML(fields){
+  return FIELD_KEYS.filter(k => k !== 'extra' || (fields[k] && fields[k].trim()))
+    .map(k => `<b>${FIELD_TITLES[k]}</b> ${escapeHTML(fields[k] || '(비어 있음)')}`).join(' · ');
+}
+
+function pickedAttempt(stage){
+  const idx = stage.pickedIndex !== undefined ? stage.pickedIndex : stage.attempts.length - 1;
+  return stage.attempts[idx];
+}
+
+function attemptsStripHTML(stage, stageIdx){
+  if(stage.attempts.length <= 1) return '';
+  const picked = stage.pickedIndex !== undefined ? stage.pickedIndex : stage.attempts.length - 1;
+  return `<div class="attempts-strip">${stage.attempts.map((img, a)=>`
+      <div class="attempt-thumb${a === picked ? ' picked' : ''}" data-stage="${stageIdx}" data-attempt="${a}" role="button" tabindex="0">
+        <img src="${img}" alt="${a+1}번째 시도">
+        <span class="n">${a+1}</span>
+      </div>`).join('')}</div>
+     <p class="attempts-hint">이번 단계에서 ${stage.attempts.length}번 그려봤어요. 눌러서 마음에 드는 그림을 고를 수 있어요.</p>`;
+}
+
+function bindAttemptThumbs(container){
+  container.querySelectorAll('.attempt-thumb').forEach(el=>{
+    el.addEventListener('click', ()=> selectAttempt(Number(el.dataset.stage), Number(el.dataset.attempt)));
+  });
+}
+
+function selectAttempt(stageIdx, attemptIdx){
+  const stage = state.stages[stageIdx];
+  if(!stage) return;
+  stage.pickedIndex = attemptIdx;
+  saveStages();
+  renderCurrentScreens();
+}
+
+function renderChatRef(){
+  const stage = state.stages[0];
+  if(!stage) return;
+  $('chatRefBody').innerHTML = `
+    <p class="result-summary" style="margin-bottom:8px"><b>1차 결과 (참고)</b></p>
+    <div class="result-frame">
+      <img src="${pickedAttempt(stage)}" alt="${escapeHTML(stage.fields.name || '생명체')}">
+    </div>
+  `;
+}
+
+function renderFirstResult(){
+  const stage = state.stages[0];
+  if(!stage) return;
+  $('firstResultBody').innerHTML = `
+    <div class="result-frame">
+      <img src="${pickedAttempt(stage)}" alt="${escapeHTML(stage.fields.name || '생명체')}">
+    </div>
+    <p class="result-summary">${fieldSummaryHTML(stage.fields)}</p>
+    <div class="stage-actions">
+      <span class="btn-download" data-idx="0">💾 이미지 저장하기</span>
+    </div>
+  `;
+  $('firstResultBody').querySelector('.btn-download').addEventListener('click', ()=> downloadImage(0));
+}
+
+function renderFinal(){
+  const stage = state.stages[1];
+  if(!stage) return;
+  $('finalBody').innerHTML = `
+    <span class="ribbon">✨ 소환 완료</span>
+    <div class="result-frame final">
+      <img src="${pickedAttempt(stage)}" alt="${escapeHTML(stage.fields.name || '생명체')}">
+    </div>
+    ${attemptsStripHTML(stage, 1)}
+    ${stage.worldbuilding ? `<p class="result-summary"><b>확장된 세계관</b> ${escapeHTML(stage.worldbuilding)}</p>` : ''}
+    ${stage.changeNote ? `<p class="result-summary"><b>바뀐 점</b> ${escapeHTML(stage.changeNote)}</p>` : ''}
+    <p class="result-summary">${fieldSummaryHTML(stage.fields)}</p>
+    <div class="stage-actions">
+      <span class="btn-download" data-idx="1">💾 이미지 저장하기</span>
+      <button class="btn-retry" id="retryBtn2">🔄 마음에 안 들면 다시 그리기</button>
+    </div>
+  `;
+  $('retryBtn2').addEventListener('click', retryLast);
+  $('finalBody').querySelector('.btn-download').addEventListener('click', ()=> downloadImage(1));
+  bindAttemptThumbs($('finalBody'));
+}
+
+function renderCurrentScreens(){
+  if(state.stages[0]){ renderFirstResult(); renderChatRef(); }
+  if(state.stages[1]) renderFinal();
+  $('exportBtn').disabled = state.stages.length === 0;
+}
+
+function downloadImage(idx){
+  const stage = state.stages[idx];
+  if(!stage) return;
+  const a = document.createElement('a');
+  a.href = pickedAttempt(stage);
+  const name = (stage.fields.name || '몬스터').replace(/[^\w가-힣]/g,'');
+  a.download = `${name}_${STAGE_LABELS[idx].replace(/\s/g,'')}.png`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function buildPrompt(fields, changeNote, isEvolution, worldbuilding){
+  const base = `2050년 우리 학교에서 새롭게 발견된 미확인 생명체를 도감에 실릴 삽화로 그려주세요.
+생물 도감이나 크리처 디자인 컨셉아트처럼, 배경은 단순하게 하고 생명체 전신이 잘 보이도록 그려주세요.
+이미지 안에 글자, 숫자, 라벨, 워터마크는 절대 넣지 말고 생명체 그림만 그려주세요.
+
+이름: ${fields.name}
+서식지: ${fields.habitat}
+먹이: ${fields.food}
+성격: ${fields.personality}
+능력: ${fields.ability}
+외형 특징: ${fields.appearance}${fields.extra && fields.extra.trim() ? `\n추가 설정: ${fields.extra.trim()}` : ''}`;
+
+  const hasWorld = isEvolution && worldbuilding && worldbuilding.trim();
+  const hasChange = isEvolution && changeNote && changeNote.trim();
+
+  if(hasWorld || hasChange){
+    const parts = ['이전 이미지의 생명체를 기반으로, 아래 내용을 반영해서 다시 그려주세요.'];
+    if(hasWorld) parts.push(`\n[확장된 세계관 — 시각적으로 드러날 수 있는 부분이 있다면 반영해주세요]\n${worldbuilding.trim()}`);
+    if(hasChange) parts.push(`\n[이번에 새로 반영한 점]\n${changeNote.trim()}`);
+    parts.push(`\n[현재 전체 설정]\n${base}`);
+    return parts.join('');
+  }
+  return base;
+}
+
+function validateBeforeGenerate(){
+  if(state.stages.length === 0){
+    const empty = REQUIRED_KEYS.find(k => !state.fields[k].trim());
+    if(empty){
+      toast(`${FIELD_TITLES[empty]}을(를) 입력해주세요`);
+      return false;
+    }
+  } else {
+    if(!state.changeNote.trim() && !state.worldbuilding.trim()){
+      toast('세계관이나 바뀐 점을 적어주세요');
+      return false;
+    }
+  }
+  return true;
+}
+
+function renderPromptPreview(){
+  const el = $('promptPreview');
+  if(!el) return;
+  const isEvolution = state.stages.length > 0;
+  el.textContent = buildPrompt(state.fields, state.changeNote, isEvolution, state.worldbuilding);
+}
+
+async function callImageAPI(prompt, referenceImage){
+  const res = await fetch(WORKER_URL + '/api/image', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({prompt, referenceImage}),
+  });
+  if(!res.ok){
+    let err;
+    try{ err = await res.json(); } catch(e){ err = {error:`HTTP ${res.status}`}; }
+    throw new Error(err.detail?.error?.message || err.error || '이미지 생성에 실패했어요');
+  }
+  const data = await res.json();
+  if(!data.image) throw new Error('이미지 데이터가 비어있어요');
+  return data.image;
+}
+
+async function generate(){
+  if(busy) return;
+  if(!validateBeforeGenerate()) return;
+  if(state.stages.length >= MAX_STAGES) return;
+
+  const isEvolution = state.stages.length > 0;
+  const btn = isEvolution ? $('genBtn2') : $('genBtn1');
+  const prevText = btn.textContent;
+  busy = true;
+  btn.disabled = true;
+  btn.classList.add('spinning');
+  btn.textContent = isEvolution ? '이전 모습을 참고해서 그리는 중이에요 (30~50초)' : '그리는 중이에요 (20~40초)';
+
+  const referenceImage = isEvolution ? pickedAttempt(state.stages[state.stages.length - 1]) : null;
+  const fieldsSnapshot = Object.assign({}, state.fields);
+  const changeNote = isEvolution ? state.changeNote.trim() : '';
+  const worldbuilding = isEvolution ? state.worldbuilding.trim() : '';
+  const prompt = buildPrompt(fieldsSnapshot, changeNote, isEvolution, worldbuilding);
+
+  try{
+    const image = await callImageAPI(prompt, referenceImage);
+    state.stages.push({fields: fieldsSnapshot, changeNote, worldbuilding, prompt, referenceImage, attempts: [image], pickedIndex: 0});
+    saveFields();
+    await saveStages();
+    renderCurrentScreens();
+    toast('생명체가 그려졌어요');
+    goTo(isEvolution ? 'final' : 'firstResult');
+  }catch(err){
+    console.error(err);
+    toast('생성에 실패했어요: ' + err.message);
+  }finally{
+    busy = false;
+    btn.disabled = false;
+    btn.classList.remove('spinning');
+    btn.textContent = prevText;
+  }
+}
+
+async function retryLast(){
+  if(busy) return;
+  const idx = state.stages.length - 1;
+  const stage = state.stages[idx];
+  if(!stage || idx !== 1) return; // 1단계(몬스터 구상)에는 다시 그리기 없음
+
+  const retryBtn = $('retryBtn2');
+  busy = true;
+  if(retryBtn){ retryBtn.textContent = '다시 그리는 중이에요...'; retryBtn.setAttribute('disabled',''); }
+
+  try{
+    const image = await callImageAPI(stage.prompt, stage.referenceImage);
+    stage.attempts.push(image);
+    stage.pickedIndex = stage.attempts.length - 1;
+    await saveStages();
+    toast('다시 그렸어요');
+  }catch(err){
+    console.error(err);
+    toast('다시 그리기에 실패했어요: ' + err.message);
+  }finally{
+    busy = false;
+    renderCurrentScreens();
+  }
+}
+
+/* ── 전체 과정 저장(내보내기) ── */
+function exportProcess(){
+  const monsterName = escapeHTML(state.fields.name || '이름 없는 생명체');
+  const sections = state.stages.map((stage, i)=>{
+    const pickedIdx = stage.pickedIndex !== undefined ? stage.pickedIndex : stage.attempts.length - 1;
+    const attemptsHTML = stage.attempts.map((img, a)=>{
+      const picked = a === pickedIdx;
+      return `<figure style="margin:0;text-align:center">
+        <img src="${img}" style="width:180px;border-radius:12px;border:3px solid ${picked ? '#17C9AE' : '#E3DEF7'}">
+        <figcaption style="font-size:12px;color:#6E6482;margin-top:4px">${a+1}번째 시도${picked ? ' · 최종 선택' : ''}</figcaption>
+      </figure>`;
+    }).join('');
+
+    return `
+      <section style="margin-bottom:36px;padding-bottom:28px;border-bottom:1px solid #E3DEF7">
+        <h2 style="font-size:20px;margin:0 0 10px">${STAGE_LABELS[i]}</h2>
+        ${stage.worldbuilding ? `<p style="background:#E1FBF5;color:#2B2140;padding:10px 14px;border-radius:10px;font-size:14px;margin:0 0 12px"><b style="color:#0EA790">확장된 세계관</b> ${escapeHTML(stage.worldbuilding)}</p>` : ''}
+        ${stage.changeNote ? `<p style="background:#F1E9FF;color:#2B2140;padding:10px 14px;border-radius:10px;font-size:14px;margin:0 0 12px"><b style="color:#7440E0">바뀐 점</b> ${escapeHTML(stage.changeNote)}</p>` : ''}
+        <p style="font-size:13px;color:#6E6482;line-height:1.8;margin:0 0 14px">${fieldSummaryHTML(stage.fields)}</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">${attemptsHTML}</div>
+      </section>`;
+  }).join('');
+
+  const html = `<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<title>${monsterName} 활동 내용</title>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Noto Sans KR',sans-serif;background:#F5F2FF;color:#2B2140;max-width:760px;margin:0 auto;padding:32px 24px 80px}
+h1{font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:26px}
+</style></head><body>
+<h1>${monsterName}의 활동 내용</h1>
+${sections}
+</body></html>`;
+
+  const blob = new Blob([html], {type: 'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${(state.fields.name || '몬스터').replace(/[^\w가-힣]/g,'')}_활동내용.html`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* ── 이벤트 바인딩 ── */
+$('genBtn1').addEventListener('click', generate);
+$('genBtn2').addEventListener('click', generate);
+$('toChatBtn').addEventListener('click', ()=> goTo('chat'));
+$('exportBtn').addEventListener('click', exportProcess);
+$('resetBtn').addEventListener('click', async ()=>{
+  if(!confirm('지금까지 입력한 설정과 그려진 이미지가 모두 사라져요. 처음부터 다시 시작할까요?')) return;
+  state = {
+    fields:{name:'',habitat:'',food:'',personality:'',ability:'',appearance:'',extra:''},
+    changeNote:'', worldbuilding:'', stages:[],
+  };
+  localStorage.removeItem('monsterDexFields');
+  await clearStages();
+  bindFieldInputs();
+  renderCurrentScreens();
+  goTo('design');
+});
+
+async function init(){
+  localStorage.removeItem('monsterDexV1'); // 이전 저장 방식 흔적 정리
+  loadFields();
+  state.stages = migrateStages(await loadStages()).slice(0, MAX_STAGES);
+  bindFieldInputs();
+  renderCurrentScreens();
+
+  if(state.stages.length === 0) goTo('design');
+  else if(state.stages.length === 1) goTo('firstResult');
+  else goTo('final');
+}
+init();
+</script>
+</body>
+</html>
