@@ -58,13 +58,15 @@ button,input,textarea{font-family:inherit}
 /* ── 툴바 ── */
 .toolbar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
 .toolbar-actions{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
-.student-id{display:flex;gap:6px}
-.student-id input{
-  border:2px solid var(--ink);border-radius:99px;background:#fff;color:var(--ink);
-  font-size:12px;font-weight:700;padding:6px 12px;
+.student-badge{
+  display:flex;align-items:center;gap:8px;background:#fff;border:2px solid var(--ink);
+  border-radius:99px;padding:5px 6px 5px 14px;font-size:12px;font-weight:800;color:var(--ink);
 }
-.student-id input#studentNo{width:70px}
-.student-id input#studentName{width:80px}
+.student-badge button{
+  border:none;background:var(--mint-3);color:var(--mint-dark);border-radius:99px;
+  padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;
+}
+.student-badge button:hover{background:var(--mint-2)}
 .btn-reset,.btn-export{
   background:#fff;border:2px solid var(--ink);
   color:var(--ink);padding:7px 14px;border-radius:99px;
@@ -251,11 +253,11 @@ button,input,textarea{font-family:inherit}
 <div class="app">
 
   <div class="toolbar">
-    <div class="student-id">
-      <input type="text" id="studentNo" placeholder="학번">
-      <input type="text" id="studentName" placeholder="이름">
+    <div class="student-badge" id="studentBadge" style="display:none">
+      <span id="studentBadgeText"></span>
+      <button id="logoutBtn" title="다른 학생으로 전환">🚪 전환</button>
     </div>
-    <div class="toolbar-actions">
+    <div class="toolbar-actions" id="toolbarActions" style="display:none">
       <button class="btn-export" id="exportBtn">📁 제출용 파일 저장</button>
       <button class="btn-export" id="backupSaveBtn">💾 데이터 저장</button>
       <button class="btn-export" id="backupLoadBtn">📂 데이터 불러오기</button>
@@ -274,6 +276,23 @@ button,input,textarea{font-family:inherit}
       <div class="path-node" id="pathNode1"><span class="path-circle">2</span><span class="path-label">소환</span></div>
     </div>
   </div>
+
+  <!-- 화면 0: 로그인 -->
+  <section class="screen" id="screen-login">
+    <div class="card" style="max-width:400px;margin:0 auto">
+      <h2 class="title-font">🔑 연구원 등록</h2>
+      <p class="desc">학번과 이름을 입력하고 입장해주세요. 이전에 저장한 내용이 있으면 이어서 볼 수 있어요.</p>
+      <div class="field">
+        <label for="loginNo">학번</label>
+        <input type="text" id="loginNo" placeholder="예: 20305">
+      </div>
+      <div class="field">
+        <label for="loginName">이름</label>
+        <input type="text" id="loginName" placeholder="예: 홍길동">
+      </div>
+      <button class="btn-main" id="loginBtn">🚪 입장하기</button>
+    </div>
+  </section>
 
   <!-- 화면 1: 몬스터 구상 -->
   <section class="screen" id="screen-design">
@@ -388,33 +407,33 @@ let state = {
   stages: [],
 };
 let busy = false;
-let currentScreen = 'design';
+let currentScreen = 'login';
+let studentKey = null; // 로그인한 학생 식별자(학번_이름) — 로그인 전엔 null
 
-/* ── 저장: 설정 텍스트는 localStorage, 이미지 든 결과는 IndexedDB ── */
+/* ── 저장: 설정 텍스트는 localStorage, 이미지 든 결과는 IndexedDB. 학생별로 키를 나눠서 한 컴퓨터를 여러 학생이 써도 서로 안 섞임 ── */
+function fieldsStorageKey(){
+  return 'monsterDexFields_' + studentKey;
+}
 function loadFields(){
   try{
-    const raw = localStorage.getItem('monsterDexFields');
+    const raw = localStorage.getItem(fieldsStorageKey());
     if(!raw) return;
     const parsed = JSON.parse(raw);
     if(parsed.fields) state.fields = Object.assign({name:'',habitat:'',food:'',personality:'',ability:'',appearance:'',extra:''}, parsed.fields);
     if(typeof parsed.changeNote === 'string') state.changeNote = parsed.changeNote;
     if(typeof parsed.worldbuilding === 'string') state.worldbuilding = parsed.worldbuilding;
-    if(typeof parsed.studentNo === 'string') state.studentNo = parsed.studentNo;
-    if(typeof parsed.studentName === 'string') state.studentName = parsed.studentName;
   }catch(e){}
 }
 function saveFields(){
   try{
-    localStorage.setItem('monsterDexFields', JSON.stringify({
+    localStorage.setItem(fieldsStorageKey(), JSON.stringify({
       fields: state.fields, changeNote: state.changeNote, worldbuilding: state.worldbuilding,
-      studentNo: state.studentNo, studentName: state.studentName,
     }));
   }catch(e){}
 }
 
 const DB_NAME = 'monsterDexDB';
 const STORE_NAME = 'stages';
-const DB_KEY = 'v1';
 
 function openDB(){
   return new Promise((resolve, reject)=>{
@@ -429,7 +448,7 @@ async function loadStages(){
     const db = await openDB();
     return await new Promise((resolve, reject)=>{
       const tx = db.transaction(STORE_NAME, 'readonly');
-      const req = tx.objectStore(STORE_NAME).get(DB_KEY);
+      const req = tx.objectStore(STORE_NAME).get(studentKey);
       req.onsuccess = ()=> resolve(req.result || []);
       req.onerror = ()=> reject(req.error);
     });
@@ -443,7 +462,7 @@ async function saveStages(){
     const db = await openDB();
     await new Promise((resolve, reject)=>{
       const tx = db.transaction(STORE_NAME, 'readwrite');
-      tx.objectStore(STORE_NAME).put(state.stages, DB_KEY);
+      tx.objectStore(STORE_NAME).put(state.stages, studentKey);
       tx.oncomplete = ()=> resolve();
       tx.onerror = ()=> reject(tx.error);
     });
@@ -457,7 +476,7 @@ async function clearStages(){
     const db = await openDB();
     await new Promise((resolve, reject)=>{
       const tx = db.transaction(STORE_NAME, 'readwrite');
-      tx.objectStore(STORE_NAME).delete(DB_KEY);
+      tx.objectStore(STORE_NAME).delete(studentKey);
       tx.oncomplete = ()=> resolve();
       tx.onerror = ()=> reject(tx.error);
     });
@@ -489,14 +508,6 @@ function escapeHTML(s){
 }
 
 function bindFieldInputs(){
-  const noEl = $('studentNo');
-  noEl.value = state.studentNo;
-  noEl.addEventListener('input', ()=>{ state.studentNo = noEl.value; saveFields(); });
-
-  const nameEl = $('studentName');
-  nameEl.value = state.studentName;
-  nameEl.addEventListener('input', ()=>{ state.studentName = nameEl.value; saveFields(); });
-
   FIELD_KEYS.forEach(key=>{
     const el = $('f-' + key);
     el.value = state.fields[key];
@@ -525,6 +536,55 @@ function bindFieldInputs(){
 function updateGenBtn2State(){
   $('genBtn2').disabled = !(state.changeNote.trim() || state.worldbuilding.trim());
   renderPromptPreview();
+}
+
+/* ── 로그인(학번 기준으로 각자 기록 분리) ── */
+function sanitizeKey(no, name){
+  const clean = s => (s || '').trim().replace(/\s+/g,'');
+  return clean(no) + '_' + clean(name);
+}
+
+function updateStudentBadge(){
+  $('studentBadgeText').textContent = `${state.studentNo} · ${state.studentName}`;
+}
+
+async function loginSubmit(){
+  const no = $('loginNo').value.trim();
+  const name = $('loginName').value.trim();
+  if(!no || !name){ toast('학번과 이름을 모두 입력해주세요'); return; }
+
+  studentKey = sanitizeKey(no, name);
+  state.studentNo = no;
+  state.studentName = name;
+
+  loadFields();
+  state.stages = migrateStages(await loadStages()).slice(0, MAX_STAGES);
+  bindFieldInputs();
+  renderCurrentScreens();
+  updateStudentBadge();
+  $('studentBadge').style.display = 'flex';
+  $('toolbarActions').style.display = 'flex';
+
+  if(state.stages.length === 0) goTo('design');
+  else if(state.stages.length === 1) goTo('firstResult');
+  else goTo('final');
+
+  toast(state.stages.length ? '이전에 저장한 내용을 불러왔어요' : '환영해요! 새로 시작해요');
+}
+
+function logout(){
+  if(!confirm('다른 학생으로 전환할까요? 지금까지 작성한 내용은 그대로 저장돼 있어요.')) return;
+  studentKey = null;
+  state = {
+    studentNo: '', studentName: '',
+    fields: {name:'',habitat:'',food:'',personality:'',ability:'',appearance:'',extra:''},
+    changeNote: '', worldbuilding: '', stages: [],
+  };
+  $('loginNo').value = '';
+  $('loginName').value = '';
+  $('studentBadge').style.display = 'none';
+  $('toolbarActions').style.display = 'none';
+  goTo('login');
 }
 
 /* ── 화면 전환 ── */
@@ -868,8 +928,9 @@ async function backupLoad(file){
     }
     if(!confirm('지금 작성 중인 내용을 이 파일 내용으로 덮어써도 될까요?')) return;
 
-    state.studentNo = backup.studentNo || '';
-    state.studentName = backup.studentName || '';
+    state.studentNo = backup.studentNo || state.studentNo;
+    state.studentName = backup.studentName || state.studentName;
+    studentKey = sanitizeKey(state.studentNo, state.studentName);
     state.fields = Object.assign({name:'',habitat:'',food:'',personality:'',ability:'',appearance:'',extra:''}, backup.fields);
     state.changeNote = backup.changeNote || '';
     state.worldbuilding = backup.worldbuilding || '';
@@ -879,6 +940,9 @@ async function backupLoad(file){
     await saveStages();
     bindFieldInputs();
     renderCurrentScreens();
+    updateStudentBadge();
+    $('studentBadge').style.display = 'flex';
+    $('toolbarActions').style.display = 'flex';
 
     if(state.stages.length === 0) goTo('design');
     else if(state.stages.length === 1) goTo('firstResult');
@@ -904,27 +968,28 @@ $('backupFileInput').addEventListener('change', (e)=>{
 });
 $('resetBtn').addEventListener('click', async ()=>{
   if(!confirm('지금까지 입력한 설정과 그려진 이미지가 모두 사라져요. 처음부터 다시 시작할까요?')) return;
-  state = {
-    fields:{name:'',habitat:'',food:'',personality:'',ability:'',appearance:'',extra:''},
-    changeNote:'', worldbuilding:'', stages:[],
-  };
-  localStorage.removeItem('monsterDexFields');
+  state.fields = {name:'',habitat:'',food:'',personality:'',ability:'',appearance:'',extra:''};
+  state.changeNote = '';
+  state.worldbuilding = '';
+  state.stages = [];
+  localStorage.removeItem(fieldsStorageKey());
   await clearStages();
   bindFieldInputs();
   renderCurrentScreens();
   goTo('design');
 });
+$('loginBtn').addEventListener('click', loginSubmit);
+$('logoutBtn').addEventListener('click', logout);
+['loginNo','loginName'].forEach(id=>{
+  $(id).addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter') loginSubmit();
+  });
+});
 
-async function init(){
+function init(){
   localStorage.removeItem('monsterDexV1'); // 이전 저장 방식 흔적 정리
-  loadFields();
-  state.stages = migrateStages(await loadStages()).slice(0, MAX_STAGES);
-  bindFieldInputs();
-  renderCurrentScreens();
-
-  if(state.stages.length === 0) goTo('design');
-  else if(state.stages.length === 1) goTo('firstResult');
-  else goTo('final');
+  localStorage.removeItem('monsterDexFields'); // 로그인 이전 버전 흔적 정리
+  goTo('login');
 }
 init();
 </script>
