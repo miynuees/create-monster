@@ -56,7 +56,15 @@ button,input,textarea{font-family:inherit}
 .app{max-width:680px;margin:0 auto;padding:24px 20px 100px;position:relative}
 
 /* ── 툴바 ── */
-.toolbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.toolbar-actions{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+.student-id{display:flex;gap:6px}
+.student-id input{
+  border:2px solid var(--ink);border-radius:99px;background:#fff;color:var(--ink);
+  font-size:12px;font-weight:700;padding:6px 12px;
+}
+.student-id input#studentNo{width:70px}
+.student-id input#studentName{width:80px}
 .btn-reset,.btn-export{
   background:#fff;border:2px solid var(--ink);
   color:var(--ink);padding:7px 14px;border-radius:99px;
@@ -243,8 +251,17 @@ button,input,textarea{font-family:inherit}
 <div class="app">
 
   <div class="toolbar">
-    <button class="btn-export" id="exportBtn">📁 활동 내용 저장하기</button>
-    <button class="btn-reset" id="resetBtn">🔁 처음부터 다시 만들기</button>
+    <div class="student-id">
+      <input type="text" id="studentNo" placeholder="학번">
+      <input type="text" id="studentName" placeholder="이름">
+    </div>
+    <div class="toolbar-actions">
+      <button class="btn-export" id="exportBtn">📁 제출용 파일 저장</button>
+      <button class="btn-export" id="backupSaveBtn">💾 데이터 저장</button>
+      <button class="btn-export" id="backupLoadBtn">📂 데이터 불러오기</button>
+      <input type="file" id="backupFileInput" accept="application/json" style="display:none">
+      <button class="btn-reset" id="resetBtn">🔁 처음부터 다시 만들기</button>
+    </div>
   </div>
 
   <div class="header">
@@ -363,6 +380,8 @@ const FIELD_TITLES = {name:'이름',habitat:'서식지',food:'먹이',personalit
 const $ = id => document.getElementById(id);
 
 let state = {
+  studentNo: '',
+  studentName: '',
   fields: {name:'',habitat:'',food:'',personality:'',ability:'',appearance:'',extra:''},
   changeNote: '',
   worldbuilding: '',
@@ -380,11 +399,16 @@ function loadFields(){
     if(parsed.fields) state.fields = Object.assign({name:'',habitat:'',food:'',personality:'',ability:'',appearance:'',extra:''}, parsed.fields);
     if(typeof parsed.changeNote === 'string') state.changeNote = parsed.changeNote;
     if(typeof parsed.worldbuilding === 'string') state.worldbuilding = parsed.worldbuilding;
+    if(typeof parsed.studentNo === 'string') state.studentNo = parsed.studentNo;
+    if(typeof parsed.studentName === 'string') state.studentName = parsed.studentName;
   }catch(e){}
 }
 function saveFields(){
   try{
-    localStorage.setItem('monsterDexFields', JSON.stringify({fields: state.fields, changeNote: state.changeNote, worldbuilding: state.worldbuilding}));
+    localStorage.setItem('monsterDexFields', JSON.stringify({
+      fields: state.fields, changeNote: state.changeNote, worldbuilding: state.worldbuilding,
+      studentNo: state.studentNo, studentName: state.studentName,
+    }));
   }catch(e){}
 }
 
@@ -465,6 +489,14 @@ function escapeHTML(s){
 }
 
 function bindFieldInputs(){
+  const noEl = $('studentNo');
+  noEl.value = state.studentNo;
+  noEl.addEventListener('input', ()=>{ state.studentNo = noEl.value; saveFields(); });
+
+  const nameEl = $('studentName');
+  nameEl.value = state.studentName;
+  nameEl.addEventListener('input', ()=>{ state.studentName = nameEl.value; saveFields(); });
+
   FIELD_KEYS.forEach(key=>{
     const el = $('f-' + key);
     el.value = state.fields[key];
@@ -745,8 +777,19 @@ async function retryLast(){
 }
 
 /* ── 전체 과정 저장(내보내기) ── */
+function fileNamePrefix(){
+  const clean = s => (s || '').trim().replace(/[^\w가-힣]/g,'');
+  const no = clean(state.studentNo);
+  const name = clean(state.studentName);
+  const monster = clean(state.fields.name) || '몬스터';
+  return (no || name) ? [no, name].filter(Boolean).join('_') : monster;
+}
+
 function exportProcess(){
   const monsterName = escapeHTML(state.fields.name || '이름 없는 생명체');
+  const studentLine = (state.studentNo.trim() || state.studentName.trim())
+    ? `<p style="color:#6E6482;font-size:13px;margin:-6px 0 20px">학번 ${escapeHTML(state.studentNo || '-')} · 이름 ${escapeHTML(state.studentName || '-')}</p>`
+    : '';
   const sections = state.stages.map((stage, i)=>{
     const pickedIdx = stage.pickedIndex !== undefined ? stage.pickedIndex : stage.attempts.length - 1;
     const attemptsHTML = stage.attempts.map((img, a)=>{
@@ -776,6 +819,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#F5F2FF;color:#2B2140;max-
 h1{font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:26px}
 </style></head><body>
 <h1>${monsterName}의 활동 내용</h1>
+${studentLine}
 ${sections}
 </body></html>`;
 
@@ -783,11 +827,68 @@ ${sections}
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${(state.fields.name || '몬스터').replace(/[^\w가-힣]/g,'')}_활동내용.html`;
+  a.download = `${fileNamePrefix()}_제출용.html`;
   document.body.appendChild(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+/* ── 데이터 저장/불러오기(다른 컴퓨터에서도 이어서 할 수 있는 백업 파일) ── */
+function backupSave(){
+  const backup = {
+    type: 'monsterDexBackup',
+    version: 1,
+    studentNo: state.studentNo,
+    studentName: state.studentName,
+    fields: state.fields,
+    changeNote: state.changeNote,
+    worldbuilding: state.worldbuilding,
+    stages: state.stages,
+  };
+  const blob = new Blob([JSON.stringify(backup)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${fileNamePrefix()}_데이터.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  toast('데이터 파일을 저장했어요');
+}
+
+async function backupLoad(file){
+  if(!file) return;
+  try{
+    const text = await file.text();
+    const backup = JSON.parse(text);
+    if(backup.type !== 'monsterDexBackup' || !backup.fields || !Array.isArray(backup.stages)){
+      throw new Error('올바른 데이터 파일이 아니에요');
+    }
+    if(!confirm('지금 작성 중인 내용을 이 파일 내용으로 덮어써도 될까요?')) return;
+
+    state.studentNo = backup.studentNo || '';
+    state.studentName = backup.studentName || '';
+    state.fields = Object.assign({name:'',habitat:'',food:'',personality:'',ability:'',appearance:'',extra:''}, backup.fields);
+    state.changeNote = backup.changeNote || '';
+    state.worldbuilding = backup.worldbuilding || '';
+    state.stages = migrateStages(backup.stages).slice(0, MAX_STAGES);
+
+    saveFields();
+    await saveStages();
+    bindFieldInputs();
+    renderCurrentScreens();
+
+    if(state.stages.length === 0) goTo('design');
+    else if(state.stages.length === 1) goTo('firstResult');
+    else goTo('final');
+
+    toast('데이터 파일을 불러왔어요');
+  }catch(err){
+    console.error(err);
+    toast('불러오기에 실패했어요: ' + err.message);
+  }
 }
 
 /* ── 이벤트 바인딩 ── */
@@ -795,6 +896,12 @@ $('genBtn1').addEventListener('click', generate);
 $('genBtn2').addEventListener('click', generate);
 $('toChatBtn').addEventListener('click', ()=> goTo('chat'));
 $('exportBtn').addEventListener('click', exportProcess);
+$('backupSaveBtn').addEventListener('click', backupSave);
+$('backupLoadBtn').addEventListener('click', ()=> $('backupFileInput').click());
+$('backupFileInput').addEventListener('change', (e)=>{
+  backupLoad(e.target.files[0]);
+  e.target.value = '';
+});
 $('resetBtn').addEventListener('click', async ()=>{
   if(!confirm('지금까지 입력한 설정과 그려진 이미지가 모두 사라져요. 처음부터 다시 시작할까요?')) return;
   state = {
