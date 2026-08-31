@@ -153,6 +153,7 @@ button,input,textarea{font-family:inherit}
   box-shadow:0 0 0 3px rgba(139,92,246,.18);
 }
 .field .optional-tag{color:var(--sub);font-weight:400;font-size:11px;margin-left:5px}
+.field .label-q{color:var(--sub);font-weight:500;font-size:11.5px;margin-left:7px}
 
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
 @media (max-width:560px){.grid-2{grid-template-columns:1fr}}
@@ -298,39 +299,43 @@ button,input,textarea{font-family:inherit}
   <section class="screen" id="screen-design">
     <div class="card">
       <h2 class="title-font">🧬 몬스터 구상</h2>
-      <p class="desc">설정카드에 적어둔 내용을 옮겨 적어주세요.</p>
+      <p class="desc">활동지에 정리한 내용을 옮겨 적어주세요.</p>
 
       <div class="field">
-        <label for="f-name"><span class="field-icon">🏷️</span>이 생명체의 이름은 무엇인가요?</label>
+        <label for="f-name"><span class="field-icon">🏷️</span>이름<span class="label-q">이 생명체의 이름은 무엇인가요?</span></label>
         <input id="f-name" type="text" placeholder="예: 급식실도치">
+      </div>
+      <div class="field">
+        <label for="f-background"><span class="field-icon">🌅</span>등장 배경<span class="label-q">2050년, 어떤 일 때문에 나타났나요?</span></label>
+        <textarea id="f-background" placeholder="예: 급식실 배수구 청소를 오래 안 해서 생겨났어요"></textarea>
       </div>
       <div class="grid-2">
         <div class="field">
-          <label for="f-habitat"><span class="field-icon">🌍</span>어디에서 사나요?</label>
+          <label for="f-habitat"><span class="field-icon">🌍</span>서식지<span class="label-q">어디에서 사나요?</span></label>
           <textarea id="f-habitat" placeholder="예: 급식실 냉장고 뒤 좁은 틈"></textarea>
         </div>
         <div class="field">
-          <label for="f-food"><span class="field-icon">🍖</span>무엇을 먹나요?</label>
-          <textarea id="f-food" placeholder="예: 잔반통에 남은 음식 찌꺼기"></textarea>
+          <label for="f-personality"><span class="field-icon">💭</span>성격<span class="label-q">성격은 어떤가요?</span></label>
+          <textarea id="f-personality" placeholder="예: 겁이 많아서 사람이 오면 바로 숨어요"></textarea>
         </div>
       </div>
       <div class="grid-2">
         <div class="field">
-          <label for="f-personality"><span class="field-icon">💭</span>성격은 어떤가요?</label>
-          <textarea id="f-personality" placeholder="예: 겁이 많아서 사람이 오면 바로 숨어요"></textarea>
+          <label for="f-ability"><span class="field-icon">⚡</span>능력<span class="label-q">어떤 능력이 있나요?</span></label>
+          <textarea id="f-ability" placeholder="예: 스트레스를 받으면 지독한 냄새를 뿜어요"></textarea>
         </div>
         <div class="field">
-          <label for="f-ability"><span class="field-icon">⚡</span>어떤 능력이 있나요?</label>
-          <textarea id="f-ability" placeholder="예: 스트레스를 받으면 지독한 냄새를 뿜어요"></textarea>
+          <label for="f-trait"><span class="field-icon">✨</span>특징<span class="label-q">이 생명체만의 특징이 있나요?</span></label>
+          <textarea id="f-trait" placeholder="예: 급식 시간에만 움직여요"></textarea>
         </div>
       </div>
       <div class="field">
-        <label for="f-appearance"><span class="field-icon">👁️</span>생김새는 어떤가요?</label>
+        <label for="f-appearance"><span class="field-icon">👁️</span>외적 특징<span class="label-q">겉모습은 어떻게 생겼나요?</span></label>
         <textarea id="f-appearance" placeholder="예: 몸이 동그랗고 등에 가시가 나 있어요"></textarea>
       </div>
       <div class="field optional">
-        <label for="f-extra"><span class="field-icon">➕</span>그 외에 더 넣고 싶은 설정이 있나요?<span class="optional-tag">(선택)</span></label>
-        <textarea id="f-extra" placeholder="예: 급식 시간에만 움직여요 / 큰 소리에 예민해요"></textarea>
+        <label for="f-extra"><span class="field-icon">➕</span>기타<span class="label-q">더 추가하고 싶은 점이 있나요?</span><span class="optional-tag">(선택)</span></label>
+        <textarea id="f-extra" placeholder="예: 큰 소리에 예민해요"></textarea>
       </div>
 
       <button class="btn-main" id="genBtn1">✨ 이 생명체 소환하기</button>
@@ -392,16 +397,17 @@ button,input,textarea{font-family:inherit}
 const WORKER_URL = 'https://prompt-atelier-proxy.vercel.app';
 const MAX_STAGES = 2;
 const STAGE_LABELS = ['몬스터 구상','소환'];
-const REQUIRED_KEYS = ['name','habitat','food','personality','ability','appearance'];
+const REQUIRED_KEYS = ['name','background','habitat','personality','ability','trait','appearance'];
 const FIELD_KEYS = [...REQUIRED_KEYS, 'extra'];
-const FIELD_TITLES = {name:'이름',habitat:'서식지',food:'먹이',personality:'성격',ability:'능력',appearance:'외형 특징',extra:'추가 설정'};
+const FIELD_TITLES = {name:'이름',background:'등장 배경',habitat:'서식지',personality:'성격',ability:'능력',trait:'특징',appearance:'외적 특징',extra:'기타'};
+const emptyFields = ()=>({name:'',background:'',habitat:'',personality:'',ability:'',trait:'',appearance:'',extra:''});
 
 const $ = id => document.getElementById(id);
 
 let state = {
   studentNo: '',
   studentName: '',
-  fields: {name:'',habitat:'',food:'',personality:'',ability:'',appearance:'',extra:''},
+  fields: emptyFields(),
   changeNote: '',
   worldbuilding: '',
   stages: [],
@@ -419,7 +425,7 @@ function loadFields(){
     const raw = localStorage.getItem(fieldsStorageKey());
     if(!raw) return;
     const parsed = JSON.parse(raw);
-    if(parsed.fields) state.fields = Object.assign({name:'',habitat:'',food:'',personality:'',ability:'',appearance:'',extra:''}, parsed.fields);
+    if(parsed.fields) state.fields = Object.assign(emptyFields(), parsed.fields);
     if(typeof parsed.changeNote === 'string') state.changeNote = parsed.changeNote;
     if(typeof parsed.worldbuilding === 'string') state.worldbuilding = parsed.worldbuilding;
   }catch(e){}
@@ -492,7 +498,7 @@ function migrateStages(rawStages){
     const referenceImage = stage.referenceImage !== undefined ? stage.referenceImage : prevImage;
     const pickedIndex = stage.pickedIndex !== undefined ? stage.pickedIndex : attempts.length - 1;
     prevImage = attempts[pickedIndex] || null;
-    return {fields: Object.assign({extra:''}, stage.fields), changeNote: stage.changeNote || '', worldbuilding: stage.worldbuilding || '', prompt, referenceImage, attempts, pickedIndex};
+    return {fields: Object.assign(emptyFields(), stage.fields), changeNote: stage.changeNote || '', worldbuilding: stage.worldbuilding || '', prompt, referenceImage, attempts, pickedIndex};
   });
 }
 
@@ -577,7 +583,7 @@ function logout(){
   studentKey = null;
   state = {
     studentNo: '', studentName: '',
-    fields: {name:'',habitat:'',food:'',personality:'',ability:'',appearance:'',extra:''},
+    fields: emptyFields(),
     changeNote: '', worldbuilding: '', stages: [],
   };
   $('loginNo').value = '';
@@ -715,11 +721,12 @@ function buildPrompt(fields, changeNote, isEvolution, worldbuilding){
 이미지 안에 글자, 숫자, 라벨, 워터마크는 절대 넣지 말고 생명체 그림만 그려주세요.
 
 이름: ${fields.name}
+등장 배경: ${fields.background}
 서식지: ${fields.habitat}
-먹이: ${fields.food}
 성격: ${fields.personality}
 능력: ${fields.ability}
-외형 특징: ${fields.appearance}${fields.extra && fields.extra.trim() ? `\n추가 설정: ${fields.extra.trim()}` : ''}`;
+특징: ${fields.trait}
+외적 특징: ${fields.appearance}${fields.extra && fields.extra.trim() ? `\n기타: ${fields.extra.trim()}` : ''}`;
 
   const hasWorld = isEvolution && worldbuilding && worldbuilding.trim();
   const hasChange = isEvolution && changeNote && changeNote.trim();
@@ -931,7 +938,7 @@ async function backupLoad(file){
     state.studentNo = backup.studentNo || state.studentNo;
     state.studentName = backup.studentName || state.studentName;
     studentKey = sanitizeKey(state.studentNo, state.studentName);
-    state.fields = Object.assign({name:'',habitat:'',food:'',personality:'',ability:'',appearance:'',extra:''}, backup.fields);
+    state.fields = Object.assign(emptyFields(), backup.fields);
     state.changeNote = backup.changeNote || '';
     state.worldbuilding = backup.worldbuilding || '';
     state.stages = migrateStages(backup.stages).slice(0, MAX_STAGES);
@@ -968,7 +975,7 @@ $('backupFileInput').addEventListener('change', (e)=>{
 });
 $('resetBtn').addEventListener('click', async ()=>{
   if(!confirm('지금까지 입력한 설정과 그려진 이미지가 모두 사라져요. 처음부터 다시 시작할까요?')) return;
-  state.fields = {name:'',habitat:'',food:'',personality:'',ability:'',appearance:'',extra:''};
+  state.fields = emptyFields();
   state.changeNote = '';
   state.worldbuilding = '';
   state.stages = [];
