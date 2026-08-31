@@ -275,7 +275,7 @@ button,input,textarea{font-family:inherit}
       <button id="logoutBtn" title="다른 학생으로 전환">🚪 전환</button>
     </div>
     <div class="toolbar-actions" id="toolbarActions" style="display:none">
-      <button class="btn-export" id="exportBtn">📁 제출용 파일 저장</button>
+      <button class="btn-export" id="exportBtn">📄 제출용 PDF 저장</button>
       <button class="btn-export" id="backupSaveBtn">💾 데이터 저장</button>
       <button class="btn-export" id="backupLoadBtn">📂 데이터 불러오기</button>
       <input type="file" id="backupFileInput" accept="application/json" style="display:none">
@@ -889,41 +889,164 @@ function fileNamePrefix(){
   return (no || name) ? [no, name].filter(Boolean).join('_') : monster;
 }
 
-function exportProcess(){
+/* 항목을 한 줄씩 자세히 보여주는 표 */
+function fieldDetailHTML(fields){
+  return FIELD_KEYS.filter(k => k !== 'extra' || (fields[k] || '').trim())
+    .map(k => `<div style="display:flex;gap:12px;padding:7px 2px;border-bottom:1px solid #EDEAF7;font-size:13px;line-height:1.6">
+      <b style="flex:none;width:80px;color:#7440E0">${FIELD_TITLES[k]}</b><span style="flex:1">${escapeHTML(fields[k] || '')}</span></div>`).join('');
+}
+
+function promptBoxHTML(stage){
+  if(!stage.prompt) return '';
+  return `<div style="margin-top:16px">
+    <div style="font-size:12px;font-weight:800;color:#0EA790;margin-bottom:6px">🤖 AI에게 보낸 프롬프트</div>
+    <div style="white-space:pre-wrap;font-size:10.5px;line-height:1.65;color:#4A4160;background:#F7F5FF;border:1.5px solid #E3DEF7;border-radius:10px;padding:12px 14px">${escapeHTML(stage.prompt)}</div>
+  </div>`;
+}
+
+function attemptsFiguresHTML(stage){
+  const pickedIdx = stage.pickedIndex !== undefined ? stage.pickedIndex : stage.attempts.length - 1;
+  const w = stage.attempts.length > 2 ? 150 : (stage.attempts.length === 2 ? 200 : 260);
+  return `<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:16px;justify-content:center">${stage.attempts.map((img, a)=>{
+    const picked = a === pickedIdx;
+    return `<figure style="margin:0;text-align:center">
+      <img src="${img}" style="width:${w}px;border-radius:12px;border:3px solid ${picked ? '#17C9AE' : '#E3DEF7'}">
+      <figcaption style="font-size:11px;color:#6E6482;margin-top:4px">${a+1}번째 시도${picked ? ' · 최종 선택' : ''}</figcaption>
+    </figure>`;
+  }).join('')}</div>`;
+}
+
+function stageSectionHTML(stage, i){
+  return `
+    <h2 style="font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:19px;margin:0 0 12px;padding-bottom:8px;border-bottom:2.5px solid #2B2140">${i+1}. ${STAGE_LABELS[i]}</h2>
+    ${stage.worldbuilding ? `<p style="background:#E1FBF5;color:#2B2140;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.7;margin:0 0 10px"><b style="color:#0EA790">확장된 세계관</b> ${escapeHTML(stage.worldbuilding)}</p>` : ''}
+    ${stage.changeNote ? `<p style="background:#F1E9FF;color:#2B2140;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.7;margin:0 0 10px"><b style="color:#7440E0">바뀐 점</b> ${escapeHTML(stage.changeNote)}</p>` : ''}
+    <div style="margin:0 0 4px">${fieldDetailHTML(stage.fields)}</div>
+    ${promptBoxHTML(stage)}
+    ${attemptsFiguresHTML(stage)}`;
+}
+
+function exportHeaderHTML(){
   const monsterName = escapeHTML(state.fields.name || '이름 없는 생명체');
   const studentLine = (state.studentNo.trim() || state.studentName.trim())
-    ? `<p style="color:#6E6482;font-size:13px;margin:-6px 0 20px">학번 ${escapeHTML(state.studentNo || '-')} · 이름 ${escapeHTML(state.studentName || '-')}</p>`
-    : '';
-  const sections = state.stages.map((stage, i)=>{
-    const pickedIdx = stage.pickedIndex !== undefined ? stage.pickedIndex : stage.attempts.length - 1;
-    const attemptsHTML = stage.attempts.map((img, a)=>{
-      const picked = a === pickedIdx;
-      return `<figure style="margin:0;text-align:center">
-        <img src="${img}" style="width:180px;border-radius:12px;border:3px solid ${picked ? '#17C9AE' : '#E3DEF7'}">
-        <figcaption style="font-size:12px;color:#6E6482;margin-top:4px">${a+1}번째 시도${picked ? ' · 최종 선택' : ''}</figcaption>
-      </figure>`;
-    }).join('');
+    ? `학번 ${escapeHTML(state.studentNo || '-')} · 이름 ${escapeHTML(state.studentName || '-')} · ` : '';
+  return `<h1 style="font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:26px;margin:0 0 6px">${monsterName}의 활동 기록</h1>
+    <p style="color:#6E6482;font-size:12px;margin:0 0 24px">${studentLine}저장 ${new Date().toLocaleString('ko-KR')}</p>`;
+}
 
-    return `
-      <section style="margin-bottom:36px;padding-bottom:28px;border-bottom:1px solid #E3DEF7">
-        <h2 style="font-size:20px;margin:0 0 10px">${STAGE_LABELS[i]}</h2>
-        ${stage.worldbuilding ? `<p style="background:#E1FBF5;color:#2B2140;padding:10px 14px;border-radius:10px;font-size:14px;margin:0 0 12px"><b style="color:#0EA790">확장된 세계관</b> ${escapeHTML(stage.worldbuilding)}</p>` : ''}
-        ${stage.changeNote ? `<p style="background:#F1E9FF;color:#2B2140;padding:10px 14px;border-radius:10px;font-size:14px;margin:0 0 12px"><b style="color:#7440E0">바뀐 점</b> ${escapeHTML(stage.changeNote)}</p>` : ''}
-        <p style="font-size:13px;color:#6E6482;line-height:1.8;margin:0 0 14px">${fieldSummaryHTML(stage.fields)}</p>
-        <div style="display:flex;gap:12px;flex-wrap:wrap">${attemptsHTML}</div>
-      </section>`;
-  }).join('');
+/* PDF 라이브러리는 처음 저장할 때 한 번만 내려받아요 */
+function loadScriptOnce(src){
+  loadScriptOnce._cache = loadScriptOnce._cache || {};
+  if(!loadScriptOnce._cache[src]){
+    loadScriptOnce._cache[src] = new Promise((resolve, reject)=>{
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = ()=>{ delete loadScriptOnce._cache[src]; reject(new Error('PDF 라이브러리를 불러오지 못했어요')); };
+      document.head.appendChild(s);
+    });
+  }
+  return loadScriptOnce._cache[src];
+}
+async function ensurePdfLibs(){
+  await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+  await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+}
+
+/* 예시 모드의 SVG 그림은 PDF 캡처가 안 될 수 있어서 PNG로 미리 변환 */
+function svgToPng(dataUri){
+  if(!dataUri || !dataUri.startsWith('data:image/svg')) return Promise.resolve(dataUri);
+  return new Promise((resolve)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      try{
+        const c = document.createElement('canvas');
+        c.width = 800; c.height = 800;
+        c.getContext('2d').drawImage(img, 0, 0, 800, 800);
+        resolve(c.toDataURL('image/png'));
+      }catch(e){ resolve(dataUri); }
+    };
+    img.onerror = ()=> resolve(dataUri);
+    img.src = dataUri;
+  });
+}
+
+async function exportProcess(){
+  if(busy || state.stages.length === 0) return;
+  const btn = $('exportBtn');
+  const prevText = btn.textContent;
+  busy = true;
+  btn.disabled = true;
+  btn.textContent = '📄 PDF 만드는 중...';
+
+  let holder = null;
+  try{
+    await ensurePdfLibs();
+
+    // 이미지 준비(SVG → PNG 변환)
+    const stagesForPdf = [];
+    for(const st of state.stages){
+      const attempts = [];
+      for(const a of st.attempts) attempts.push(await svgToPng(a));
+      stagesForPdf.push(Object.assign({}, st, {attempts}));
+    }
+
+    // 단계마다 A4 한 쪽씩 만들어서 → 잘리는 부분 없이 통째로 PDF에 붙임
+    holder = document.createElement('div');
+    holder.style.cssText = 'position:fixed;left:-10000px;top:0;';
+    stagesForPdf.forEach((stage, i)=>{
+      const page = document.createElement('div');
+      page.style.cssText = "width:794px;min-height:1123px;background:#fff;color:#2B2140;font-family:'Noto Sans KR',sans-serif;padding:48px 54px;box-sizing:border-box;";
+      page.innerHTML = (i === 0 ? exportHeaderHTML() : '') + stageSectionHTML(stage, i);
+      holder.appendChild(page);
+    });
+    document.body.appendChild(holder);
+    await new Promise(r => setTimeout(r, 120)); // 이미지가 화면에 자리 잡을 시간
+
+    const pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
+    const pages = Array.from(holder.children);
+    for(let i = 0; i < pages.length; i++){
+      const canvas = await html2canvas(pages[i], {scale: 2, backgroundColor: '#ffffff', logging: false});
+      if(i > 0) pdf.addPage();
+      const imgData = canvas.toDataURL('image/jpeg', .92);
+      const h = canvas.height * 210 / canvas.width;
+      if(h > 297){
+        // 내용이 A4보다 길면 그 쪽 전체를 살짝 축소해서 한 쪽에 다 담음(잘림 방지)
+        const s = 297 / h;
+        pdf.addImage(imgData, 'JPEG', (210 - 210 * s) / 2, 0, 210 * s, 297);
+      }else{
+        pdf.addImage(imgData, 'JPEG', 0, 0, 210, h);
+      }
+    }
+    pdf.save(`${fileNamePrefix()}_제출용.pdf`);
+    toast('PDF로 저장했어요');
+  }catch(err){
+    console.error(err);
+    exportProcessHTML();
+    toast('PDF를 만들지 못해서 HTML 파일로 대신 저장했어요');
+  }finally{
+    if(holder) holder.remove();
+    busy = false;
+    btn.disabled = false;
+    btn.textContent = prevText;
+  }
+}
+
+/* 인터넷 문제 등으로 PDF 라이브러리를 못 불러올 때의 대체 저장(HTML) */
+function exportProcessHTML(){
+  const monsterName = escapeHTML(state.fields.name || '이름 없는 생명체');
+  const sections = state.stages.map((stage, i)=>
+    `<section style="margin-bottom:36px;padding-bottom:28px;border-bottom:1px solid #E3DEF7">${stageSectionHTML(stage, i)}</section>`
+  ).join('');
 
   const html = `<!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
-<title>${monsterName} 활동 내용</title>
+<title>${monsterName} 활동 기록</title>
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 body{font-family:'Noto Sans KR',sans-serif;background:#F5F2FF;color:#2B2140;max-width:760px;margin:0 auto;padding:32px 24px 80px}
-h1{font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:26px}
 </style></head><body>
-<h1>${monsterName}의 활동 내용</h1>
-${studentLine}
+${exportHeaderHTML()}
 ${sections}
 </body></html>`;
 
