@@ -233,6 +233,10 @@ button,input,textarea{font-family:inherit}
 .change-note-box textarea{background:#fff}
 .change-note-box.world-box{background:var(--mint-3)}
 .change-note-box.world-box label{color:var(--mint-dark)}
+.change-note-box .box-title{font-size:14.5px;font-weight:800;color:var(--violet-dark);margin:0 0 4px}
+.change-note-box.world-box .box-title{color:var(--mint-dark)}
+.change-note-box .box-desc{font-size:12px;color:var(--sub);margin:0 0 12px;line-height:1.65;font-weight:500}
+.change-note-box .field{margin-bottom:12px}
 
 .prompt-preview{
   white-space:pre-wrap;font-size:11.5px;line-height:1.6;color:var(--sub);
@@ -384,18 +388,37 @@ button,input,textarea{font-family:inherit}
   <section class="screen" id="screen-chat">
     <div class="card">
       <h2 class="title-font">🔮 소환 준비</h2>
-      <p class="desc">1차 결과를 보고 세계관을 넓히거나, 바꾸고 싶은 점을 정리해보세요.</p>
+      <p class="desc">1차 결과를 보고, 활동지에 정리한 세계관 확장 내용을 옮겨 적은 뒤 그림에 어떻게 드러낼지 번역해보세요.</p>
 
       <div id="chatRefBody"></div>
 
-      <div class="field change-note-box world-box">
-        <label for="f-worldbuilding">🌌 확장된 세계관</label>
-        <textarea id="f-worldbuilding" placeholder="예: 혼자 살고 천적은 없어요. 급식실 배수구 청소를 안 해서 생겨났어요."></textarea>
+      <div class="change-note-box world-box">
+        <div class="box-title">🌌 확장된 세계관</div>
+        <p class="box-desc">활동지에 정리한 네 가지 확장 내용을 옮겨 적어주세요.</p>
+        <div class="field">
+          <label for="f-world-incident">📰 사건<span class="label-q">사람들과 처음 만난 날, 무슨 일이 있었나요?</span></label>
+          <textarea id="f-world-incident" placeholder="예: 처음 발견된 날 급식실이 발칵 뒤집혀서 학교 뉴스에 나왔어요"></textarea>
+        </div>
+        <div class="field">
+          <label for="f-world-cost">⚠️ 대가<span class="label-q">그 능력에는 어떤 약점이나 부작용이 있나요?</span></label>
+          <textarea id="f-world-cost" placeholder="예: 냄새를 뿜고 나면 하루 종일 기운이 없어요"></textarea>
+        </div>
+        <div class="field">
+          <label for="f-world-coexist">⚖️ 공존<span class="label-q">이 몬스터가 나타난 뒤 좋아진 것과 곤란해진 것은?</span></label>
+          <textarea id="f-world-coexist" placeholder="예: 밤마다 떨어진 음식을 치워줘요. 대신 가끔 냄새 사고를 쳐요"></textarea>
+        </div>
+        <div class="field">
+          <label for="f-world-neighbors">🐾 이웃<span class="label-q">우리 학교의 다른 몬스터와 마주치면 무슨 일이 생기나요?</span></label>
+          <textarea id="f-world-neighbors" placeholder="예: 과학실에 사는 몬스터와는 서식지 문제로 서로 피해 다녀요"></textarea>
+        </div>
       </div>
 
-      <div class="field change-note-box">
-        <label for="f-changenote">📝 바뀐 점 정리 <span class="optional-tag">(선택)</span></label>
-        <textarea id="f-changenote" placeholder="예: 냄새를 뿜는 능력인데 그림엔 안 보여서, 몸 주변에 냄새 김이 나는 모습으로 바꿨어요"></textarea>
+      <div class="change-note-box">
+        <div class="box-title">🎨 시각적 번역</div>
+        <p class="box-desc">확장한 세계관을 캐릭터에 어떻게 반영할지 '시각 언어'로 번역해봅시다. 눈에 보이는 모습으로 적을수록 그림에 그대로 드러나요.</p>
+        <div class="field">
+          <textarea id="f-changenote" placeholder="예: 능력을 쓴 직후라 몸 주변에 초록빛 냄새 김이 피어오르고, 기운이 빠져 축 처진 표정이에요"></textarea>
+        </div>
       </div>
 
       <div class="field-block">
@@ -429,6 +452,16 @@ const REQUIRED_KEYS = ['name','background','habitat','personality','ability','tr
 const FIELD_KEYS = [...REQUIRED_KEYS, 'extra'];
 const FIELD_TITLES = {name:'이름',background:'등장 배경',habitat:'서식지',personality:'성격',ability:'능력',trait:'특징',appearance:'외적 특징',extra:'기타'};
 const emptyFields = ()=>({name:'',background:'',habitat:'',personality:'',ability:'',trait:'',appearance:'',extra:''});
+const WORLD_KEYS = ['incident','cost','coexist','neighbors'];
+const WORLD_TITLES = {incident:'사건',cost:'대가',coexist:'공존',neighbors:'이웃'};
+const blankWorld = ()=>({incident:'',cost:'',coexist:'',neighbors:''});
+// 네 칸을 프롬프트/기록용 한 덩어리 텍스트로 합침(예전 저장본은 문자열 그대로 통과)
+function worldToText(w){
+  if(!w) return '';
+  if(typeof w === 'string') return w.trim();
+  return WORLD_KEYS.filter(k => (w[k] || '').trim())
+    .map(k => `${WORLD_TITLES[k]}: ${w[k].trim()}`).join('\n');
+}
 
 const $ = id => document.getElementById(id);
 
@@ -437,7 +470,7 @@ let state = {
   studentName: '',
   fields: emptyFields(),
   changeNote: '',
-  worldbuilding: '',
+  world: blankWorld(),
   stages: [],
 };
 let busy = false;
@@ -456,14 +489,14 @@ function loadFields(){
     const parsed = JSON.parse(raw);
     if(parsed.fields) state.fields = Object.assign(emptyFields(), parsed.fields);
     if(typeof parsed.changeNote === 'string') state.changeNote = parsed.changeNote;
-    if(typeof parsed.worldbuilding === 'string') state.worldbuilding = parsed.worldbuilding;
+    if(parsed.world) state.world = Object.assign(blankWorld(), parsed.world);
   }catch(e){}
 }
 function saveFields(){
   if(isDemo) return;
   try{
     localStorage.setItem(fieldsStorageKey(), JSON.stringify({
-      fields: state.fields, changeNote: state.changeNote, worldbuilding: state.worldbuilding,
+      fields: state.fields, changeNote: state.changeNote, world: state.world,
     }));
   }catch(e){}
 }
@@ -561,17 +594,20 @@ function bindFieldInputs(){
     updateGenBtn2State();
   });
 
-  const worldEl = $('f-worldbuilding');
-  worldEl.value = state.worldbuilding;
-  worldEl.addEventListener('input', ()=>{
-    state.worldbuilding = worldEl.value;
-    saveFields();
-    updateGenBtn2State();
+  WORLD_KEYS.forEach(key=>{
+    const el = $('f-world-' + key);
+    el.value = state.world[key];
+    el.addEventListener('input', ()=>{
+      state.world[key] = el.value;
+      saveFields();
+      updateGenBtn2State();
+    });
   });
 }
 
 function updateGenBtn2State(){
-  $('genBtn2').disabled = !(state.changeNote.trim() || state.worldbuilding.trim());
+  const hasAny = state.changeNote.trim() || WORLD_KEYS.some(k => state.world[k].trim());
+  $('genBtn2').disabled = !hasAny;
   renderPromptPreview();
 }
 
@@ -616,7 +652,7 @@ function logout(){
   state = {
     studentNo: '', studentName: '',
     fields: emptyFields(),
-    changeNote: '', worldbuilding: '', stages: [],
+    changeNote: '', world: blankWorld(), stages: [],
   };
   $('loginNo').value = '';
   $('loginName').value = '';
@@ -719,8 +755,8 @@ function renderFinal(){
       <img src="${pickedAttempt(stage)}" alt="${escapeHTML(stage.fields.name || '생명체')}">
     </div>
     ${attemptsStripHTML(stage, 1)}
-    ${stage.worldbuilding ? `<p class="result-summary"><b>확장된 세계관</b> ${escapeHTML(stage.worldbuilding)}</p>` : ''}
-    ${stage.changeNote ? `<p class="result-summary"><b>바뀐 점</b> ${escapeHTML(stage.changeNote)}</p>` : ''}
+    ${stage.worldbuilding ? `<p class="result-summary"><b>확장된 세계관</b><br>${escapeHTML(stage.worldbuilding).replace(/\n/g,'<br>')}</p>` : ''}
+    ${stage.changeNote ? `<p class="result-summary"><b>시각적 번역</b> ${escapeHTML(stage.changeNote)}</p>` : ''}
     <p class="result-summary">${fieldSummaryHTML(stage.fields)}</p>
     <div class="stage-actions">
       <span class="btn-download" data-idx="1">💾 이미지 저장하기</span>
@@ -768,8 +804,8 @@ function buildPrompt(fields, changeNote, isEvolution, worldbuilding){
 
   if(hasWorld || hasChange){
     const parts = ['이전 이미지의 생명체를 기반으로, 아래 내용을 반영해서 다시 그려주세요.'];
-    if(hasWorld) parts.push(`\n[확장된 세계관 — 시각적으로 드러날 수 있는 부분이 있다면 반영해주세요]\n${worldbuilding.trim()}`);
-    if(hasChange) parts.push(`\n[이번에 새로 반영한 점]\n${changeNote.trim()}`);
+    if(hasWorld) parts.push(`\n[확장된 세계관 — 이야기 배경이니 참고만 해주세요. 그림의 화풍이나 분위기를 마음대로 바꾸지는 말아주세요]\n${worldbuilding.trim()}`);
+    if(hasChange) parts.push(`\n[시각적 번역 — 이 내용이 생명체의 모습에 실제로 드러나도록 그려주세요]\n${changeNote.trim()}`);
     parts.push(`\n[현재 전체 설정]\n${base}`);
     return parts.join('');
   }
@@ -784,8 +820,13 @@ function validateBeforeGenerate(){
       return false;
     }
   } else {
-    if(!state.changeNote.trim() && !state.worldbuilding.trim()){
-      toast('세계관이나 바뀐 점을 적어주세요');
+    const missing = WORLD_KEYS.find(k => !state.world[k].trim());
+    if(missing){
+      toast(`확장된 세계관의 '${WORLD_TITLES[missing]}' 칸을 채워주세요`);
+      return false;
+    }
+    if(!state.changeNote.trim()){
+      toast('시각적 번역을 적어주세요');
       return false;
     }
   }
@@ -796,7 +837,7 @@ function renderPromptPreview(){
   const el = $('promptPreview');
   if(!el) return;
   const isEvolution = state.stages.length > 0;
-  el.textContent = buildPrompt(state.fields, state.changeNote, isEvolution, state.worldbuilding);
+  el.textContent = buildPrompt(state.fields, state.changeNote, isEvolution, worldToText(state.world));
 }
 
 async function callImageAPI(prompt, referenceImage){
@@ -832,7 +873,7 @@ async function generate(){
   const referenceImage = isEvolution ? pickedAttempt(state.stages[state.stages.length - 1]) : null;
   const fieldsSnapshot = Object.assign({}, state.fields);
   const changeNote = isEvolution ? state.changeNote.trim() : '';
-  const worldbuilding = isEvolution ? state.worldbuilding.trim() : '';
+  const worldbuilding = isEvolution ? worldToText(state.world) : '';
   const prompt = buildPrompt(fieldsSnapshot, changeNote, isEvolution, worldbuilding);
 
   try{
@@ -919,8 +960,8 @@ function attemptsFiguresHTML(stage){
 function stageSectionHTML(stage, i){
   return `
     <h2 style="font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:19px;margin:0 0 12px;padding-bottom:8px;border-bottom:2.5px solid #2B2140">${i+1}. ${STAGE_LABELS[i]}</h2>
-    ${stage.worldbuilding ? `<p style="background:#E1FBF5;color:#2B2140;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.7;margin:0 0 10px"><b style="color:#0EA790">확장된 세계관</b> ${escapeHTML(stage.worldbuilding)}</p>` : ''}
-    ${stage.changeNote ? `<p style="background:#F1E9FF;color:#2B2140;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.7;margin:0 0 10px"><b style="color:#7440E0">바뀐 점</b> ${escapeHTML(stage.changeNote)}</p>` : ''}
+    ${stage.worldbuilding ? `<p style="background:#E1FBF5;color:#2B2140;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.7;margin:0 0 10px;white-space:pre-wrap"><b style="color:#0EA790">확장된 세계관</b>\n${escapeHTML(stage.worldbuilding)}</p>` : ''}
+    ${stage.changeNote ? `<p style="background:#F1E9FF;color:#2B2140;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.7;margin:0 0 10px"><b style="color:#7440E0">시각적 번역</b> ${escapeHTML(stage.changeNote)}</p>` : ''}
     <div style="margin:0 0 4px">${fieldDetailHTML(stage.fields)}</div>
     ${promptBoxHTML(stage)}
     ${attemptsFiguresHTML(stage)}`;
@@ -1070,7 +1111,7 @@ function backupSave(){
     studentName: state.studentName,
     fields: state.fields,
     changeNote: state.changeNote,
-    worldbuilding: state.worldbuilding,
+    world: state.world,
     stages: state.stages,
   };
   const blob = new Blob([JSON.stringify(backup)], {type: 'application/json'});
@@ -1100,7 +1141,7 @@ async function backupLoad(file){
     studentKey = sanitizeKey(state.studentNo, state.studentName);
     state.fields = Object.assign(emptyFields(), backup.fields);
     state.changeNote = backup.changeNote || '';
-    state.worldbuilding = backup.worldbuilding || '';
+    state.world = Object.assign(blankWorld(), backup.world || {});
     state.stages = migrateStages(backup.stages).slice(0, MAX_STAGES);
 
     saveFields();
@@ -1183,16 +1224,22 @@ function demoStart(){
     appearance: '몸이 동그랗고 등에 가시가 나 있어요',
     extra: '큰 소리에 예민해요',
   };
-  state.worldbuilding = '혼자 살고 천적은 없어요. 밤마다 급식실을 돌아다니며 떨어진 음식을 몰래 치워줘요.';
-  state.changeNote = '냄새 능력이 그림에 안 보여서, 몸 주변에 냄새 김이 나는 모습으로 바꿨어요';
+  state.world = {
+    incident: '처음 발견된 날 급식실이 발칵 뒤집혀서 학교 뉴스에 나왔어요',
+    cost: '냄새를 뿜고 나면 하루 종일 기운이 없어요',
+    coexist: '밤마다 떨어진 음식을 치워줘서 급식실이 깨끗해졌어요. 대신 가끔 냄새 사고를 쳐요',
+    neighbors: '과학실에 사는 몬스터와는 서식지 문제로 서로 피해 다녀요',
+  };
+  state.changeNote = '능력을 쓴 직후라 몸 주변에 초록빛 냄새 김이 피어오르고, 기운이 빠져 축 처진 표정이에요';
 
   const img1 = demoSVG();
   const imgA = demoSVG({steam:true});
   const imgB = demoSVG({steam:true, sparkle:true});
   const snap = Object.assign({}, state.fields);
+  const worldText = worldToText(state.world);
   state.stages = [
     {fields: snap, changeNote:'', worldbuilding:'', prompt: buildPrompt(snap,'',false,''), referenceImage:null, attempts:[img1], pickedIndex:0},
-    {fields: snap, changeNote: state.changeNote, worldbuilding: state.worldbuilding, prompt: buildPrompt(snap, state.changeNote, true, state.worldbuilding), referenceImage: img1, attempts:[imgA, imgB], pickedIndex:1},
+    {fields: snap, changeNote: state.changeNote, worldbuilding: worldText, prompt: buildPrompt(snap, state.changeNote, true, worldText), referenceImage: img1, attempts:[imgA, imgB], pickedIndex:1},
   ];
 
   bindFieldInputs();
@@ -1211,7 +1258,7 @@ function demoEnd(){
   state = {
     studentNo: '', studentName: '',
     fields: emptyFields(),
-    changeNote: '', worldbuilding: '', stages: [],
+    changeNote: '', world: blankWorld(), stages: [],
   };
   bindFieldInputs();
   ['firstResultBody','chatRefBody','finalBody'].forEach(id=> $(id).innerHTML = '');
@@ -1245,7 +1292,7 @@ $('resetBtn').addEventListener('click', async ()=>{
   if(!confirm('지금까지 입력한 설정과 그려진 이미지가 모두 사라져요. 처음부터 다시 시작할까요?')) return;
   state.fields = emptyFields();
   state.changeNote = '';
-  state.worldbuilding = '';
+  state.world = blankWorld();
   state.stages = [];
   localStorage.removeItem(fieldsStorageKey());
   await clearStages();
