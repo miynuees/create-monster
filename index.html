@@ -1076,7 +1076,7 @@ function demoStart(){
   renderCurrentScreens();
   updateStudentBadge();
   $('studentBadge').style.display = 'flex';
-  $('toolbarActions').style.display = 'none';
+  $('toolbarActions').style.display = 'flex'; // 제출용/데이터 저장이 어떤 파일인지 예시로 눌러볼 수 있게
   $('demoNav').style.display = 'block';
   goTo('design');
   toast('예시 모드예요. 노란 버튼으로 화면을 넘겨보세요');
@@ -1093,6 +1093,7 @@ function demoEnd(){
   bindFieldInputs();
   ['firstResultBody','chatRefBody','finalBody'].forEach(id=> $(id).innerHTML = '');
   $('studentBadge').style.display = 'none';
+  $('toolbarActions').style.display = 'none';
   $('demoNav').style.display = 'none';
   goTo('login');
 }
@@ -1108,12 +1109,16 @@ $('genBtn2').addEventListener('click', generate);
 $('toChatBtn').addEventListener('click', ()=> goTo('chat'));
 $('exportBtn').addEventListener('click', exportProcess);
 $('backupSaveBtn').addEventListener('click', backupSave);
-$('backupLoadBtn').addEventListener('click', ()=> $('backupFileInput').click());
+$('backupLoadBtn').addEventListener('click', ()=>{
+  if(isDemo){ toast('예시 모드에서는 불러올 수 없어요'); return; }
+  $('backupFileInput').click();
+});
 $('backupFileInput').addEventListener('change', (e)=>{
   backupLoad(e.target.files[0]);
   e.target.value = '';
 });
 $('resetBtn').addEventListener('click', async ()=>{
+  if(isDemo){ toast('예시 모드에서는 지울 내용이 없어요'); return; }
   if(!confirm('지금까지 입력한 설정과 그려진 이미지가 모두 사라져요. 처음부터 다시 시작할까요?')) return;
   state.fields = emptyFields();
   state.changeNote = '';
