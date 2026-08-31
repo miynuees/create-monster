@@ -840,20 +840,48 @@ function renderPromptPreview(){
   el.textContent = buildPrompt(state.fields, state.changeNote, isEvolution, worldToText(state.world));
 }
 
-async function callImageAPI(prompt, referenceImage){
-  const res = await fetch(WORKER_URL + '/api/image', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({prompt, referenceImage}),
-  });
-  if(!res.ok){
-    let err;
-    try{ err = await res.json(); } catch(e){ err = {error:`HTTP ${res.status}`}; }
-    throw new Error(err.detail?.error?.message || err.error || '이미지 생성에 실패했어요');
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function waitWithCountdown(seconds, onStatus){
+  for(let s = seconds; s > 0; s--){
+    if(onStatus) onStatus(`⏳ 지금 요청이 몰렸어요. ${s}초 뒤 자동으로 다시 시도할게요`);
+    await sleep(1000);
   }
-  const data = await res.json();
-  if(!data.image) throw new Error('이미지 데이터가 비어있어요');
-  return data.image;
+  if(onStatus) onStatus('다시 시도하는 중이에요...');
+}
+
+// 반 전체가 동시에 소환하면 분당 생성 한도(429)에 걸릴 수 있어서, 몰림·일시 오류는 자동으로 기다렸다 재시도
+async function callImageAPI(prompt, referenceImage, onStatus){
+  const RETRY_DELAYS = [8, 15, 25]; // 초 단위, 최대 3번 더 시도
+  for(let attempt = 0; ; attempt++){
+    let res;
+    try{
+      res = await fetch(WORKER_URL + '/api/image', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({prompt, referenceImage}),
+      });
+    }catch(e){
+      // 네트워크가 순간적으로 끊긴 경우도 재시도
+      if(attempt < RETRY_DELAYS.length){
+        await waitWithCountdown(RETRY_DELAYS[attempt], onStatus);
+        continue;
+      }
+      throw new Error('인터넷 연결을 확인해주세요');
+    }
+    if(!res.ok){
+      if((res.status === 429 || res.status >= 500) && attempt < RETRY_DELAYS.length){
+        await waitWithCountdown(RETRY_DELAYS[attempt], onStatus);
+        continue;
+      }
+      let err;
+      try{ err = await res.json(); } catch(e){ err = {error:`HTTP ${res.status}`}; }
+      throw new Error(err.detail?.error?.message || err.error || '이미지 생성에 실패했어요');
+    }
+    const data = await res.json();
+    if(!data.image) throw new Error('이미지 데이터가 비어있어요');
+    return data.image;
+  }
 }
 
 async function generate(){
@@ -877,7 +905,7 @@ async function generate(){
   const prompt = buildPrompt(fieldsSnapshot, changeNote, isEvolution, worldbuilding);
 
   try{
-    const image = await callImageAPI(prompt, referenceImage);
+    const image = await callImageAPI(prompt, referenceImage, msg => { btn.textContent = msg; });
     state.stages.push({fields: fieldsSnapshot, changeNote, worldbuilding, prompt, referenceImage, attempts: [image], pickedIndex: 0});
     saveFields();
     await saveStages();
@@ -907,7 +935,7 @@ async function retryLast(){
   if(retryBtn){ retryBtn.textContent = '다시 그리는 중이에요...'; retryBtn.setAttribute('disabled',''); }
 
   try{
-    const image = await callImageAPI(stage.prompt, stage.referenceImage);
+    const image = await callImageAPI(stage.prompt, stage.referenceImage, msg => { if(retryBtn) retryBtn.textContent = msg; });
     stage.attempts.push(image);
     stage.pickedIndex = stage.attempts.length - 1;
     await saveStages();
