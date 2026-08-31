@@ -240,6 +240,22 @@ button,input,textarea{font-family:inherit}
   padding:10px 12px;max-height:220px;overflow-y:auto;
 }
 
+/* ── 예시 모드 내비게이션 ── */
+.demo-nav{
+  display:none;position:sticky;top:10px;z-index:20;
+  background:var(--yellow);border:2.5px solid var(--ink);border-radius:var(--r);
+  box-shadow:var(--shadow);padding:10px 12px;margin-bottom:16px;text-align:center;
+}
+.demo-nav .dn-title{font-size:12px;font-weight:800;margin-bottom:8px}
+.demo-nav .dn-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.demo-nav button{
+  border:2px solid var(--ink);border-radius:99px;background:#fff;color:var(--ink);
+  font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer;transition:.12s;
+}
+.demo-nav button:hover{transform:translateY(-1px)}
+.demo-nav button.on{background:var(--ink);color:#fff}
+.demo-nav button.dn-exit{background:var(--violet-3);color:var(--violet-dark)}
+
 .toast{
   position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(10px);
   background:var(--ink);color:#fff;font-size:13px;font-weight:600;padding:11px 18px;border-radius:99px;
@@ -278,6 +294,17 @@ button,input,textarea{font-family:inherit}
     </div>
   </div>
 
+  <div class="demo-nav" id="demoNav">
+    <div class="dn-title">👀 예시 모드 — 버튼을 눌러 각 단계 화면을 구경해보세요</div>
+    <div class="dn-btns">
+      <button data-screen="design">1. 몬스터 구상</button>
+      <button data-screen="firstResult">2. 구상 결과</button>
+      <button data-screen="chat">3. 소환 준비</button>
+      <button data-screen="final">4. 정식 소환</button>
+      <button class="dn-exit" id="demoExitBtn">✖ 예시 끝내기</button>
+    </div>
+  </div>
+
   <!-- 화면 0: 로그인 -->
   <section class="screen" id="screen-login">
     <div class="card" style="max-width:400px;margin:0 auto">
@@ -292,6 +319,7 @@ button,input,textarea{font-family:inherit}
         <input type="text" id="loginName" placeholder="예: 홍길동">
       </div>
       <button class="btn-main" id="loginBtn">🚪 입장하기</button>
+      <button class="btn-secondary" id="demoBtn" style="width:100%;justify-content:center;margin:12px 0 0">👀 예시 몬스터로 화면 미리보기</button>
     </div>
   </section>
 
@@ -414,6 +442,7 @@ let state = {
 };
 let busy = false;
 let currentScreen = 'login';
+let isDemo = false; // 예시 모드: 화면 구경용. 저장·AI 생성 안 함
 let studentKey = null; // 로그인한 학생 식별자(학번_이름) — 로그인 전엔 null
 
 /* ── 저장: 설정 텍스트는 localStorage, 이미지 든 결과는 IndexedDB. 학생별로 키를 나눠서 한 컴퓨터를 여러 학생이 써도 서로 안 섞임 ── */
@@ -431,6 +460,7 @@ function loadFields(){
   }catch(e){}
 }
 function saveFields(){
+  if(isDemo) return;
   try{
     localStorage.setItem(fieldsStorageKey(), JSON.stringify({
       fields: state.fields, changeNote: state.changeNote, worldbuilding: state.worldbuilding,
@@ -464,6 +494,7 @@ async function loadStages(){
   }
 }
 async function saveStages(){
+  if(isDemo) return;
   try{
     const db = await openDB();
     await new Promise((resolve, reject)=>{
@@ -579,6 +610,7 @@ async function loginSubmit(){
 }
 
 function logout(){
+  if(isDemo){ demoEnd(); return; }
   if(!confirm('다른 학생으로 전환할까요? 지금까지 작성한 내용은 그대로 저장돼 있어요.')) return;
   studentKey = null;
   state = {
@@ -602,6 +634,9 @@ function goTo(name){
   window.scrollTo({top:0, behavior:'smooth'});
   if(name === 'chat'){
     updateGenBtn2State();
+  }
+  if(isDemo){
+    document.querySelectorAll('#demoNav [data-screen]').forEach(b=> b.classList.toggle('on', b.dataset.screen === name));
   }
 }
 
@@ -781,6 +816,7 @@ async function callImageAPI(prompt, referenceImage){
 }
 
 async function generate(){
+  if(isDemo){ toast('지금은 예시 화면이에요. 실제 소환은 로그인하고 할 수 있어요'); return; }
   if(busy) return;
   if(!validateBeforeGenerate()) return;
   if(state.stages.length >= MAX_STAGES) return;
@@ -819,6 +855,7 @@ async function generate(){
 }
 
 async function retryLast(){
+  if(isDemo){ toast('지금은 예시 화면이에요. 실제 소환은 로그인하고 할 수 있어요'); return; }
   if(busy) return;
   const idx = state.stages.length - 1;
   const stage = state.stages[idx];
@@ -962,7 +999,110 @@ async function backupLoad(file){
   }
 }
 
+/* ── 예시 모드: AI 호출 없이 미리 그려둔 그림과 예시 설정으로 전체 화면을 구경 ── */
+function demoSVG(opts){
+  opts = opts || {};
+  const steam = opts.steam ? `
+    <g stroke="#8FBF3F" stroke-width="7" stroke-linecap="round" fill="none" opacity=".8">
+      <path d="M110 150 q-14 -24 -2 -46 q10 -20 -2 -38"/>
+      <path d="M200 72 q-12 -20 0 -38 q10 -16 0 -28"/>
+      <path d="M305 140 q12 -24 2 -44 q-8 -18 2 -34"/>
+    </g>` : '';
+  const sparkle = opts.sparkle ? `
+    <g fill="#FFC93C" stroke="#2B2140" stroke-width="2.5" stroke-linejoin="round">
+      <polygon points="62,206 68,218 80,222 68,226 62,238 56,226 44,222 56,218"/>
+      <polygon points="336,248 341,257 350,260 341,263 336,272 331,263 322,260 331,257"/>
+      <polygon points="330,60 334,68 342,70 334,72 330,80 326,72 318,70 326,68"/>
+    </g>` : '';
+  const mouth = opts.sparkle
+    ? `<path d="M180 258 q20 20 40 0" stroke="#2B2140" stroke-width="5" fill="none" stroke-linecap="round"/>`
+    : `<path d="M186 260 q14 12 28 0" stroke="#2B2140" stroke-width="5" fill="none" stroke-linecap="round"/>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+    <rect width="400" height="400" fill="#E1FBF5"/>
+    <ellipse cx="200" cy="352" rx="115" ry="16" fill="#B9F3E7"/>
+    <g fill="#8B5CF6" stroke="#2B2140" stroke-width="5" stroke-linejoin="round">
+      <polygon points="128,180 96,118 168,146"/>
+      <polygon points="170,150 168,80 232,122"/>
+      <polygon points="232,124 262,72 292,140"/>
+      <polygon points="282,162 330,120 322,196"/>
+    </g>
+    ${steam}
+    <ellipse cx="160" cy="338" rx="24" ry="14" fill="#0EA790" stroke="#2B2140" stroke-width="5"/>
+    <ellipse cx="240" cy="338" rx="24" ry="14" fill="#0EA790" stroke="#2B2140" stroke-width="5"/>
+    <circle cx="200" cy="240" r="100" fill="#17C9AE" stroke="#2B2140" stroke-width="6"/>
+    <ellipse cx="200" cy="282" rx="60" ry="44" fill="#B9F3E7"/>
+    <circle cx="165" cy="222" r="19" fill="#fff" stroke="#2B2140" stroke-width="4"/>
+    <circle cx="237" cy="222" r="19" fill="#fff" stroke="#2B2140" stroke-width="4"/>
+    <circle cx="169" cy="226" r="8.5" fill="#2B2140"/>
+    <circle cx="233" cy="226" r="8.5" fill="#2B2140"/>
+    <circle cx="172" cy="222" r="3" fill="#fff"/>
+    <circle cx="236" cy="222" r="3" fill="#fff"/>
+    ${mouth}
+    <ellipse cx="136" cy="254" rx="13" ry="8" fill="#FFB1C9" opacity=".85"/>
+    <ellipse cx="264" cy="254" rx="13" ry="8" fill="#FFB1C9" opacity=".85"/>
+    ${sparkle}
+  </svg>`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
+
+function demoStart(){
+  isDemo = true;
+  studentKey = null;
+  state.studentNo = '예시';
+  state.studentName = '급식실도치';
+  state.fields = {
+    name: '급식실도치',
+    background: '급식실 배수구 청소를 오래 안 해서, 음식 냄새가 뭉쳐 생겨났어요',
+    habitat: '급식실 냉장고 뒤 좁은 틈',
+    personality: '겁이 많아서 사람이 오면 바로 숨어요',
+    ability: '스트레스를 받으면 지독한 냄새를 뿜어요',
+    trait: '급식 시간에만 움직여요',
+    appearance: '몸이 동그랗고 등에 가시가 나 있어요',
+    extra: '큰 소리에 예민해요',
+  };
+  state.worldbuilding = '혼자 살고 천적은 없어요. 밤마다 급식실을 돌아다니며 떨어진 음식을 몰래 치워줘요.';
+  state.changeNote = '냄새 능력이 그림에 안 보여서, 몸 주변에 냄새 김이 나는 모습으로 바꿨어요';
+
+  const img1 = demoSVG();
+  const imgA = demoSVG({steam:true});
+  const imgB = demoSVG({steam:true, sparkle:true});
+  const snap = Object.assign({}, state.fields);
+  state.stages = [
+    {fields: snap, changeNote:'', worldbuilding:'', prompt: buildPrompt(snap,'',false,''), referenceImage:null, attempts:[img1], pickedIndex:0},
+    {fields: snap, changeNote: state.changeNote, worldbuilding: state.worldbuilding, prompt: buildPrompt(snap, state.changeNote, true, state.worldbuilding), referenceImage: img1, attempts:[imgA, imgB], pickedIndex:1},
+  ];
+
+  bindFieldInputs();
+  renderCurrentScreens();
+  updateStudentBadge();
+  $('studentBadge').style.display = 'flex';
+  $('toolbarActions').style.display = 'none';
+  $('demoNav').style.display = 'block';
+  goTo('design');
+  toast('예시 모드예요. 노란 버튼으로 화면을 넘겨보세요');
+}
+
+function demoEnd(){
+  isDemo = false;
+  studentKey = null;
+  state = {
+    studentNo: '', studentName: '',
+    fields: emptyFields(),
+    changeNote: '', worldbuilding: '', stages: [],
+  };
+  bindFieldInputs();
+  ['firstResultBody','chatRefBody','finalBody'].forEach(id=> $(id).innerHTML = '');
+  $('studentBadge').style.display = 'none';
+  $('demoNav').style.display = 'none';
+  goTo('login');
+}
+
 /* ── 이벤트 바인딩 ── */
+$('demoBtn').addEventListener('click', demoStart);
+$('demoExitBtn').addEventListener('click', demoEnd);
+document.querySelectorAll('#demoNav [data-screen]').forEach(b=>{
+  b.addEventListener('click', ()=> goTo(b.dataset.screen));
+});
 $('genBtn1').addEventListener('click', generate);
 $('genBtn2').addEventListener('click', generate);
 $('toChatBtn').addEventListener('click', ()=> goTo('chat'));
