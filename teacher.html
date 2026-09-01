@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>2050 몬스터 도감 — 선생님 페이지</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔬</text></svg>">
+<meta name="theme-color" content="#17C9AE">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cream:#F5F2FF;
+  --paper:#FFFFFF;
+  --mint:#17C9AE;
+  --mint-dark:#0EA790;
+  --mint-2:#B9F3E7;
+  --mint-3:#E1FBF5;
+  --violet:#8B5CF6;
+  --violet-dark:#7440E0;
+  --violet-2:#DCCBFA;
+  --violet-3:#F1E9FF;
+  --yellow:#FFC93C;
+  --ink:#2B2140;
+  --sub:#6E6482;
+  --line:#E3DEF7;
+  --shadow-sm:2px 2px 0 rgba(43,33,64,.9);
+  --shadow:4px 4px 0 rgba(43,33,64,.9);
+  --shadow-lg:6px 6px 0 rgba(43,33,64,.9);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:'Noto Sans KR',sans-serif;
+  background:var(--cream);
+  color:var(--ink);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+.title-font{font-family:'Black Han Sans',sans-serif;letter-spacing:-.2px;font-weight:400}
+button,input{font-family:inherit}
+.app{max-width:860px;margin:0 auto;padding:24px 20px 100px}
+
+.header{
+  text-align:center;padding:22px 20px 20px;
+  background:linear-gradient(135deg,var(--mint-2) 0%,var(--violet-2) 100%);
+  border:3px solid var(--ink);border-radius:26px;margin-bottom:18px;
+  box-shadow:var(--shadow-lg);
+}
+.header h1{font-size:26px;margin:0 0 6px}
+.header .sub{color:var(--ink);opacity:.72;font-size:13px;font-weight:500;margin:0;line-height:1.7}
+
+.card{
+  background:var(--paper);border-radius:20px;border:2.5px solid var(--ink);
+  box-shadow:var(--shadow-lg);padding:22px;margin-bottom:16px;
+}
+.card h2{font-size:19px;margin:0 0 4px}
+.card .desc{color:var(--sub);font-size:12.5px;margin:0 0 16px;line-height:1.7;font-weight:500}
+
+.field input{
+  width:100%;border:2px solid var(--ink);border-radius:10px;
+  padding:10px 12px;font-size:14px;font-weight:500;color:var(--ink);background:#fff;
+}
+.field input:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px rgba(139,92,246,.18)}
+
+.btn-main{
+  width:100%;margin-top:12px;border:2.5px solid var(--ink);border-radius:99px;
+  background:linear-gradient(180deg,var(--mint) 0%,var(--mint-dark) 100%);
+  color:#fff;font-size:15px;font-family:'Black Han Sans',sans-serif;letter-spacing:.3px;
+  padding:12px 20px;cursor:pointer;box-shadow:var(--shadow);transition:.12s;
+}
+.btn-main:hover:not(:disabled){transform:translate(-1px,-1px);box-shadow:5px 5px 0 rgba(43,33,64,.9)}
+.btn-main:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.toolbar input{
+  flex:1;min-width:160px;border:2px solid var(--ink);border-radius:99px;
+  padding:9px 16px;font-size:13px;font-weight:500;background:#fff;
+}
+.toolbar input:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px rgba(139,92,246,.18)}
+.btn-sm{
+  border:2px solid var(--ink);border-radius:99px;background:#fff;color:var(--ink);
+  font-size:12px;font-weight:700;padding:8px 14px;cursor:pointer;transition:.12s;
+  box-shadow:var(--shadow-sm);white-space:nowrap;
+}
+.btn-sm:hover:not(:disabled){transform:translate(-1px,-1px);box-shadow:3px 3px 0 rgba(43,33,64,.9)}
+.btn-sm:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+.btn-sm.violet{color:var(--violet-dark)}
+.btn-sm.mint{color:var(--mint-dark)}
+.btn-sm.danger{color:#D8452E}
+
+.count-pill{
+  background:var(--yellow);border:2px solid var(--ink);border-radius:99px;
+  font-size:12px;font-weight:800;padding:7px 14px;box-shadow:var(--shadow-sm);white-space:nowrap;
+}
+
+.student-row{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  background:#fff;border:2.5px solid var(--ink);border-radius:16px;
+  padding:12px 16px;margin-bottom:10px;box-shadow:var(--shadow-sm);
+}
+.student-row .who{font-weight:800;font-size:14px;min-width:120px}
+.student-row .monster{color:var(--violet-dark);font-weight:700;font-size:13px;flex:1;min-width:100px}
+.student-row .meta{color:var(--sub);font-size:11.5px;min-width:150px}
+.badge{
+  display:inline-block;border:2px solid var(--ink);border-radius:99px;
+  font-size:10.5px;font-weight:800;padding:3px 9px;
+}
+.badge.s0{background:#F1EEF9;color:var(--sub)}
+.badge.s1{background:var(--violet-3);color:var(--violet-dark)}
+.badge.s2{background:var(--mint-3);color:var(--mint-dark)}
+.row-btns{display:flex;gap:6px;flex-wrap:wrap}
+
+.detail{
+  background:var(--violet-3);border:2.5px dashed var(--ink);border-radius:16px;
+  padding:18px;margin:-4px 0 12px;
+}
+.detail .stage-block{background:#fff;border:2px solid var(--ink);border-radius:14px;padding:16px;margin-bottom:12px}
+.detail .stage-block h3{margin:0 0 10px;font-size:15px}
+.detail img{max-width:200px;width:100%;border-radius:10px;border:2.5px solid var(--ink);background:#fff}
+.detail .imgs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.detail .imgs figure{margin:0;text-align:center}
+.detail .imgs figcaption{font-size:10.5px;color:var(--sub);margin-top:3px;font-weight:700}
+.kv{display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--line);font-size:12.5px;line-height:1.6}
+.kv b{flex:none;width:78px;color:var(--violet-dark)}
+.kv span{flex:1;white-space:pre-wrap}
+.note{background:var(--mint-3);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.6;margin-bottom:8px}
+.note b{color:var(--mint-dark)}
+
+.empty{
+  text-align:center;color:var(--sub);font-size:13px;font-weight:600;
+  padding:30px;background:#fff;border:2px dashed var(--ink);border-radius:16px;
+}
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(10px);
+  background:var(--ink);color:#fff;font-size:13px;font-weight:600;padding:11px 18px;border-radius:99px;
+  box-shadow:0 6px 18px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:.25s;z-index:50;
+  max-width:88vw;text-align:center;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (max-width:560px){
+  .student-row .meta{min-width:0}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <h1 class="title-font">🔬 몬스터 도감 — 선생님 페이지</h1>
+    <p class="sub">학생들이 서버에 저장한 기록을 모아 보고, 제출용 PDF를 바로 저장할 수 있어요.</p>
+  </div>
+
+  <!-- 비밀번호 -->
+  <section id="authScreen">
+    <div class="card" style="max-width:380px;margin:0 auto">
+      <h2 class="title-font">🔑 선생님 확인</h2>
+      <p class="desc">비밀번호를 입력해주세요.</p>
+      <div class="field"><input type="password" id="pwInput" placeholder="비밀번호"></div>
+      <button class="btn-main" id="pwBtn">입장하기</button>
+    </div>
+  </section>
+
+  <!-- 본 화면 -->
+  <section id="mainScreen" style="display:none">
+    <div class="toolbar">
+      <input type="text" id="searchInput" placeholder="🔍 학번이나 이름으로 검색 (예: 202)">
+      <span class="count-pill" id="countPill">0명</span>
+      <button class="btn-sm" id="refreshBtn">🔄 새로고침</button>
+      <button class="btn-sm violet" id="exportAllBtn">📄 목록 전체 PDF 저장</button>
+    </div>
+    <p style="font-size:11.5px;color:var(--sub);margin:0 0 14px;line-height:1.6">
+      💡 검색으로 한 반만 남긴 뒤 "목록 전체 PDF 저장"을 누르면 그 반 학생들만 한 파일로 저장돼요.
+    </p>
+    <div id="listBody"></div>
+  </section>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script>
+const PASSWORD = '0615';
+const STAGE_LABELS = ['몬스터 구상','소환'];
+const FIELD_KEYS = ['name','background','habitat','personality','ability','trait','appearance','extra'];
+const FIELD_TITLES = {name:'이름',background:'등장 배경',habitat:'서식지',personality:'성격',ability:'능력',trait:'특징',appearance:'외적 특징',extra:'기타'};
+const MISSING_IMAGE = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><rect width="400" height="400" fill="#EDEAF7"/><text x="200" y="200" text-anchor="middle" font-size="20" fill="#6E6482" font-family="sans-serif">이미지 없음</text></svg>');
+
+firebase.initializeApp({
+  apiKey: "AIzaSyBtSooSc-eg4zMHQ_QF-ErmYJmtaYT1Fkg",
+  authDomain: "limi-88231.firebaseapp.com",
+  projectId: "limi-88231",
+  messagingSenderId: "361025367626",
+  appId: "1:361025367626:web:19d4e19d54558d4a79c0b3"
+});
+const db = firebase.firestore();
+const $ = id => document.getElementById(id);
+
+let students = [];        // {id, data}
+const imageCache = {};    // id → {s0_a0: dataUri, ...}
+let openDetailId = null;
+let busy = false;
+
+function toast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(()=> t.classList.remove('show'), 2800);
+}
+function escapeHTML(s){
+  return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+/* ── 비밀번호 ── */
+function enter(){
+  $('authScreen').style.display = 'none';
+  $('mainScreen').style.display = 'block';
+  loadStudents();
+}
+$('pwBtn').addEventListener('click', ()=>{
+  if($('pwInput').value === PASSWORD){
+    sessionStorage.setItem('mdTeacherAuth','1');
+    enter();
+  }else{
+    toast('비밀번호가 달라요');
+  }
+});
+$('pwInput').addEventListener('keydown', e=>{ if(e.key === 'Enter') $('pwBtn').click(); });
+
+/* ── 학생 목록 ── */
+async function loadStudents(){
+  $('listBody').innerHTML = '<div class="empty">불러오는 중이에요...</div>';
+  try{
+    const snap = await db.collection('monsterDex').get();
+    students = [];
+    snap.forEach(d=> students.push({id: d.id, data: d.data() || {}}));
+    students.sort((a,b)=> String(a.data.studentNo||'').localeCompare(String(b.data.studentNo||''), 'ko', {numeric:true}));
+    renderList();
+  }catch(e){
+    console.error(e);
+    $('listBody').innerHTML = '<div class="empty">서버에서 목록을 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침을 눌러주세요.</div>';
+  }
+}
+
+function filteredStudents(){
+  const q = $('searchInput').value.trim().toLowerCase();
+  if(!q) return students;
+  return students.filter(s=>
+    String(s.data.studentNo||'').toLowerCase().includes(q) ||
+    String(s.data.studentName||'').toLowerCase().includes(q)
+  );
+}
+
+function progressBadge(data){
+  const n = (data.stages || []).length;
+  if(n >= 2) return '<span class="badge s2">소환 완료</span>';
+  if(n === 1) return '<span class="badge s1">1차 소환</span>';
+  return '<span class="badge s0">입력만</span>';
+}
+
+function fmtTime(ts){
+  if(!ts) return '';
+  try{
+    return new Date(ts).toLocaleString('ko-KR', {month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit'});
+  }catch(e){ return ''; }
+}
+
+function renderList(){
+  const list = filteredStudents();
+  $('countPill').textContent = list.length + '명';
+  if(list.length === 0){
+    $('listBody').innerHTML = '<div class="empty">아직 서버에 저장된 학생 기록이 없어요.<br>학생들이 로그인해서 활동하면 자동으로 여기에 나타나요.</div>';
+    return;
+  }
+  $('listBody').innerHTML = list.map(s=>{
+    const d = s.data;
+    const monster = (d.fields && d.fields.name) ? d.fields.name : '(몬스터 이름 없음)';
+    return `
+    <div class="student-row" data-id="${escapeHTML(s.id)}">
+      <span class="who">${escapeHTML(d.studentNo||'?')} ${escapeHTML(d.studentName||'')}</span>
+      <span class="monster">🐾 ${escapeHTML(monster)}</span>
+      ${progressBadge(d)}
+      <span class="meta">마지막 저장 ${fmtTime(d.updatedAt)}</span>
+      <span class="row-btns">
+        <button class="btn-sm mint" data-act="detail">👀 보기</button>
+        <button class="btn-sm violet" data-act="pdf">📄 PDF</button>
+        <button class="btn-sm danger" data-act="del">🗑️</button>
+      </span>
+    </div>
+    <div class="detail" id="detail-${escapeHTML(s.id)}" style="display:none"></div>`;
+  }).join('');
+
+  $('listBody').querySelectorAll('.student-row button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.closest('.student-row').dataset.id;
+      const act = btn.dataset.act;
+      if(act === 'detail') toggleDetail(id);
+      else if(act === 'pdf') exportOne(id);
+      else if(act === 'del') deleteStudent(id);
+    });
+  });
+  // 열려 있던 상세가 있으면 다시 그림
+  if(openDetailId && list.some(s=> s.id === openDetailId)){
+    const id = openDetailId;
+    openDetailId = null;
+    toggleDetail(id);
+  }
+}
+$('searchInput').addEventListener('input', renderList);
+$('refreshBtn').addEventListener('click', ()=>{
+  Object.keys(imageCache).forEach(k=> delete imageCache[k]);
+  openDetailId = null;
+  loadStudents();
+});
+
+/* ── 이미지 + 단계 재구성 (학생 페이지와 같은 방식) ── */
+async function getImages(id){
+  if(imageCache[id]) return imageCache[id];
+  const snap = await db.collection('monsterDex').doc(id).collection('images').get();
+  const images = {};
+  snap.forEach(d=>{ images[d.id] = (d.data() || {}).data || ''; });
+  imageCache[id] = images;
+  return images;
+}
+function buildStages(data, images){
+  return (data.stages || []).map((meta, i)=>{
+    const attempts = [];
+    for(let j = 0; j < (meta.attemptCount || 0); j++){
+      attempts.push(images['s' + i + '_a' + j] || MISSING_IMAGE);
+    }
+    const picked = (meta.pickedIndex !== undefined && meta.pickedIndex !== null) ? meta.pickedIndex : attempts.length - 1;
+    return Object.assign({}, meta, {attempts, pickedIndex: picked});
+  });
+}
+
+/* ── 상세 보기 ── */
+async function toggleDetail(id){
+  const box = $('detail-' + id);
+  if(!box) return;
+  if(openDetailId === id){
+    box.style.display = 'none';
+    openDetailId = null;
+    return;
+  }
+  // 다른 상세는 닫기
+  if(openDetailId){
+    const prev = $('detail-' + openDetailId);
+    if(prev) prev.style.display = 'none';
+  }
+  openDetailId = id;
+  box.style.display = 'block';
+  box.innerHTML = '<p style="margin:0;font-size:12.5px;color:var(--sub)">그림을 불러오는 중이에요...</p>';
+  try{
+    const student = students.find(s=> s.id === id);
+    const images = await getImages(id);
+    const stages = buildStages(student.data, images);
+    if(stages.length === 0){
+      box.innerHTML = '<p style="margin:0;font-size:12.5px;color:var(--sub)">아직 소환한 그림이 없어요. (설정만 입력한 상태)</p>' + fieldsKVHTML(student.data.fields || {});
+      return;
+    }
+    box.innerHTML = stages.map((stage, i)=>`
+      <div class="stage-block">
+        <h3 class="title-font">${i+1}. ${STAGE_LABELS[i] || '단계'}</h3>
+        <div class="imgs">${stage.attempts.map((img, a)=>`
+          <figure><img src="${img}" alt="${a+1}번째 시도"><figcaption>${a+1}번째 시도${a === stage.pickedIndex ? ' · 최종 선택' : ''}</figcaption></figure>`).join('')}
+        </div>
+        ${stage.keepNote ? `<div class="note"><b>그대로 살릴 점</b> ${escapeHTML(stage.keepNote)}</div>` : ''}
+        ${stage.fixNote ? `<div class="note"><b>고칠 점</b> ${escapeHTML(stage.fixNote)}</div>` : ''}
+        ${stage.changeNote ? `<div class="note"><b>시각적 번역</b> ${escapeHTML(stage.changeNote)}</div>` : ''}
+        ${fieldsKVHTML(stage.fields || {})}
+      </div>`).join('');
+  }catch(e){
+    console.error(e);
+    box.innerHTML = '<p style="margin:0;font-size:12.5px;color:#D8452E">그림을 불러오지 못했어요. 인터넷 연결을 확인해주세요.</p>';
+  }
+}
+function fieldsKVHTML(fields){
+  return FIELD_KEYS.filter(k => k !== 'extra' || (fields[k] || '').trim())
+    .map(k => `<div class="kv"><b>${FIELD_TITLES[k]}</b><span>${escapeHTML(fields[k] || '')}</span></div>`).join('');
+}
+
+/* ── PDF (학생 페이지의 제출용 PDF와 같은 레이아웃) ── */
+function loadScriptOnce(src){
+  loadScriptOnce._cache = loadScriptOnce._cache || {};
+  if(!loadScriptOnce._cache[src]){
+    loadScriptOnce._cache[src] = new Promise((resolve, reject)=>{
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = ()=>{ delete loadScriptOnce._cache[src]; reject(new Error('PDF 라이브러리를 불러오지 못했어요')); };
+      document.head.appendChild(s);
+    });
+  }
+  return loadScriptOnce._cache[src];
+}
+async function ensurePdfLibs(){
+  await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+  await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+}
+
+function pdfFieldDetailHTML(fields){
+  return FIELD_KEYS.filter(k => k !== 'extra' || (fields[k] || '').trim())
+    .map(k => `<div style="display:flex;gap:12px;padding:7px 2px;border-bottom:1px solid #EDEAF7;font-size:13px;line-height:1.6">
+      <b style="flex:none;width:80px;color:#7440E0">${FIELD_TITLES[k]}</b><span style="flex:1">${escapeHTML(fields[k] || '')}</span></div>`).join('');
+}
+function pdfPromptBoxHTML(stage){
+  if(!stage.prompt) return '';
+  return `<div style="margin-top:16px">
+    <div style="font-size:12px;font-weight:800;color:#0EA790;margin-bottom:6px">🤖 AI에게 보낸 프롬프트</div>
+    <div style="white-space:pre-wrap;font-size:10.5px;line-height:1.65;color:#4A4160;background:#F7F5FF;border:1.5px solid #E3DEF7;border-radius:10px;padding:12px 14px">${escapeHTML(stage.prompt)}</div>
+  </div>`;
+}
+function pdfAttemptsHTML(stage){
+  const w = stage.attempts.length > 2 ? 150 : (stage.attempts.length === 2 ? 200 : 260);
+  return `<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:16px;justify-content:center">${stage.attempts.map((img, a)=>{
+    const picked = a === stage.pickedIndex;
+    return `<figure style="margin:0;text-align:center">
+      <img src="${img}" style="width:${w}px;border-radius:12px;border:3px solid ${picked ? '#17C9AE' : '#E3DEF7'}">
+      <figcaption style="font-size:11px;color:#6E6482;margin-top:4px">${a+1}번째 시도${picked ? ' · 최종 선택' : ''}</figcaption>
+    </figure>`;
+  }).join('')}</div>`;
+}
+function pdfStageSectionHTML(stage, i){
+  return `
+    <h2 style="font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:19px;margin:0 0 12px;padding-bottom:8px;border-bottom:2.5px solid #2B2140">${i+1}. ${STAGE_LABELS[i] || '단계'}</h2>
+    ${stage.keepNote ? `<p style="background:#E1FBF5;color:#2B2140;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.7;margin:0 0 10px"><b style="color:#0EA790">그대로 살릴 점</b> ${escapeHTML(stage.keepNote)}</p>` : ''}
+    ${stage.fixNote ? `<p style="background:#E1FBF5;color:#2B2140;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.7;margin:0 0 10px"><b style="color:#0EA790">고칠 점</b> ${escapeHTML(stage.fixNote)}</p>` : ''}
+    ${stage.worldbuilding ? `<p style="background:#E1FBF5;color:#2B2140;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.7;margin:0 0 10px;white-space:pre-wrap"><b style="color:#0EA790">확장된 세계관</b>\n${escapeHTML(stage.worldbuilding)}</p>` : ''}
+    ${stage.changeNote ? `<p style="background:#F1E9FF;color:#2B2140;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.7;margin:0 0 10px"><b style="color:#7440E0">시각적 번역</b> ${escapeHTML(stage.changeNote)}</p>` : ''}
+    <div style="margin:0 0 4px">${pdfFieldDetailHTML(stage.fields || {})}</div>
+    ${pdfPromptBoxHTML(stage)}
+    ${pdfAttemptsHTML(stage)}`;
+}
+function pdfHeaderHTML(data){
+  const monsterName = escapeHTML((data.fields && data.fields.name) || '이름 없는 생명체');
+  return `<h1 style="font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:26px;margin:0 0 6px">${monsterName}의 활동 기록</h1>
+    <p style="color:#6E6482;font-size:12px;margin:0 0 24px">학번 ${escapeHTML(data.studentNo || '-')} · 이름 ${escapeHTML(data.studentName || '-')} · 저장 ${new Date().toLocaleString('ko-KR')}</p>`;
+}
+
+// 한 학생의 기록을 A4 페이지 div 목록으로 만듦
+function buildStudentPages(holder, data, stages){
+  stages.forEach((stage, i)=>{
+    const page = document.createElement('div');
+    page.style.cssText = "width:794px;min-height:1123px;background:#fff;color:#2B2140;font-family:'Noto Sans KR',sans-serif;padding:48px 54px;box-sizing:border-box;";
+    page.innerHTML = (i === 0 ? pdfHeaderHTML(data) : '') + pdfStageSectionHTML(stage, i);
+    holder.appendChild(page);
+  });
+}
+
+async function renderPagesToPdf(pdf, pages, firstPage){
+  for(let i = 0; i < pages.length; i++){
+    const canvas = await html2canvas(pages[i], {scale: 2, backgroundColor: '#ffffff', logging: false});
+    if(!firstPage || i > 0) pdf.addPage();
+    const imgData = canvas.toDataURL('image/jpeg', .92);
+    const h = canvas.height * 210 / canvas.width;
+    if(h > 297){
+      const s = 297 / h;
+      pdf.addImage(imgData, 'JPEG', (210 - 210 * s) / 2, 0, 210 * s, 297);
+    }else{
+      pdf.addImage(imgData, 'JPEG', 0, 0, 210, h);
+    }
+  }
+}
+
+function cleanName(s){ return String(s || '').trim().replace(/[^\w가-힣]/g,''); }
+
+async function exportOne(id){
+  if(busy){ toast('지금 다른 PDF를 만드는 중이에요'); return; }
+  const student = students.find(s=> s.id === id);
+  if(!student) return;
+  if((student.data.stages || []).length === 0){ toast('이 학생은 아직 소환한 그림이 없어요'); return; }
+  busy = true;
+  let holder = null;
+  try{
+    toast('PDF를 만드는 중이에요...');
+    await ensurePdfLibs();
+    const images = await getImages(id);
+    const stages = buildStages(student.data, images);
+    holder = document.createElement('div');
+    holder.style.cssText = 'position:fixed;left:-10000px;top:0;';
+    buildStudentPages(holder, student.data, stages);
+    document.body.appendChild(holder);
+    await new Promise(r => setTimeout(r, 120));
+    const pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
+    await renderPagesToPdf(pdf, Array.from(holder.children), true);
+    pdf.save(`${cleanName(student.data.studentNo)}_${cleanName(student.data.studentName)}_제출용.pdf`);
+    toast('PDF로 저장했어요');
+  }catch(e){
+    console.error(e);
+    toast('PDF 만들기에 실패했어요: ' + e.message);
+  }finally{
+    if(holder) holder.remove();
+    busy = false;
+  }
+}
+
+$('exportAllBtn').addEventListener('click', async ()=>{
+  if(busy){ toast('지금 다른 PDF를 만드는 중이에요'); return; }
+  const list = filteredStudents().filter(s=> (s.data.stages || []).length > 0);
+  if(list.length === 0){ toast('PDF로 만들 기록이 없어요'); return; }
+  if(!confirm(`지금 목록에 있는 ${list.length}명의 기록을 PDF 한 파일로 저장할까요?\n(학생 수가 많으면 몇 분 걸릴 수 있어요)`)) return;
+
+  busy = true;
+  const btn = $('exportAllBtn');
+  const prevText = btn.textContent;
+  btn.disabled = true;
+  let holder = null;
+  try{
+    await ensurePdfLibs();
+    const pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
+    let first = true;
+    for(let n = 0; n < list.length; n++){
+      const student = list[n];
+      btn.textContent = `📄 만드는 중... ${n+1}/${list.length}`;
+      const images = await getImages(student.id);
+      const stages = buildStages(student.data, images);
+      holder = document.createElement('div');
+      holder.style.cssText = 'position:fixed;left:-10000px;top:0;';
+      buildStudentPages(holder, student.data, stages);
+      document.body.appendChild(holder);
+      await new Promise(r => setTimeout(r, 120));
+      await renderPagesToPdf(pdf, Array.from(holder.children), first);
+      first = false;
+      holder.remove();
+      holder = null;
+    }
+    const today = new Date().toISOString().slice(0,10);
+    const q = $('searchInput').value.trim();
+    pdf.save(`몬스터도감${q ? '_' + cleanName(q) : ''}_전체제출본_${today}.pdf`);
+    toast(`${list.length}명의 기록을 PDF 한 파일로 저장했어요`);
+  }catch(e){
+    console.error(e);
+    toast('PDF 만들기에 실패했어요: ' + e.message);
+  }finally{
+    if(holder) holder.remove();
+    busy = false;
+    btn.disabled = false;
+    btn.textContent = prevText;
+  }
+});
+
+/* ── 기록 삭제 (테스트 계정 정리용) ── */
+async function deleteStudent(id){
+  const student = students.find(s=> s.id === id);
+  if(!student) return;
+  const who = `${student.data.studentNo || ''} ${student.data.studentName || ''}`.trim() || id;
+  if(!confirm(`${who} 학생의 서버 기록을 완전히 삭제할까요?\n(학생 기기에 남은 기록으로 다시 로그인하면 또 올라올 수 있어요)`)) return;
+  try{
+    const ref = db.collection('monsterDex').doc(id);
+    const imgSnap = await ref.collection('images').get();
+    const batch = db.batch();
+    imgSnap.forEach(d=> batch.delete(d.ref));
+    batch.delete(ref);
+    await batch.commit();
+    delete imageCache[id];
+    if(openDetailId === id) openDetailId = null;
+    students = students.filter(s=> s.id !== id);
+    renderList();
+    toast('삭제했어요');
+  }catch(e){
+    console.error(e);
+    toast('삭제에 실패했어요. 인터넷 연결을 확인해주세요');
+  }
+}
+
+/* ── 시작 ── */
+if(sessionStorage.getItem('mdTeacherAuth') === '1') enter();
+else $('pwInput').focus();
+</script>
+</body>
+</html>
