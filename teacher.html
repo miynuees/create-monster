@@ -112,6 +112,20 @@ button,input{font-family:inherit}
 .badge.s1{background:var(--violet-3);color:var(--violet-dark)}
 .badge.s2{background:var(--mint-3);color:var(--mint-dark)}
 .row-btns{display:flex;gap:6px;flex-wrap:wrap}
+.class-btns{display:flex;gap:4px;align-items:center}
+.class-btns .cb-label{font-size:10.5px;color:var(--sub);font-weight:700;margin-right:2px}
+.cbtn{
+  width:28px;height:28px;border:2px solid var(--ink);border-radius:50%;background:#fff;
+  font-size:11px;font-weight:800;color:var(--sub);cursor:pointer;transition:.12s;padding:0;
+}
+.cbtn:hover{transform:translateY(-1px)}
+.cbtn.on1{background:var(--mint);color:#fff}
+.cbtn.on2{background:var(--violet);color:#fff}
+.filter-chip{
+  border:2px solid var(--ink);border-radius:99px;background:#fff;color:var(--ink);
+  font-size:12px;font-weight:700;padding:7px 14px;cursor:pointer;transition:.12s;white-space:nowrap;
+}
+.filter-chip.on{background:var(--ink);color:#fff}
 
 .detail{
   background:var(--violet-3);border:2.5px dashed var(--ink);border-radius:16px;
@@ -171,8 +185,15 @@ button,input{font-family:inherit}
       <button class="btn-sm" id="refreshBtn">🔄 새로고침</button>
       <button class="btn-sm violet" id="exportAllBtn">📄 목록 전체 PDF 저장</button>
     </div>
+    <div class="toolbar" style="margin-bottom:8px">
+      <button class="filter-chip on" data-cf="all">전체</button>
+      <button class="filter-chip" data-cf="1">1분반</button>
+      <button class="filter-chip" data-cf="2">2분반</button>
+      <button class="filter-chip" data-cf="none">분반 미지정</button>
+    </div>
     <p style="font-size:11.5px;color:var(--sub);margin:0 0 14px;line-height:1.6">
-      💡 검색으로 한 반만 남긴 뒤 "목록 전체 PDF 저장"을 누르면 그 반 학생들만 한 파일로 저장돼요.
+      💡 각 학생의 <b>1·2 동그라미 버튼</b>으로 분반을 지정해요 (다시 누르면 해제). 지정하면 관찰 추리 사이트에서 학생들에게 <b>다른 분반의 몬스터만</b> 나와요.<br>
+      💡 분반 버튼이나 검색으로 목록을 좁힌 뒤 "목록 전체 PDF 저장"을 누르면 그 학생들만 한 파일로 저장돼요.
     </p>
     <div id="listBody"></div>
   </section>
@@ -204,6 +225,8 @@ let students = [];        // {id, data}
 const imageCache = {};    // id → {s0_a0: dataUri, ...}
 let openDetailId = null;
 let busy = false;
+let classMap = {};        // 학생 문서 id → 1 또는 2 (분반)
+let classFilter = 'all';  // all | 1 | 2 | none
 
 function toast(msg){
   const t = $('toast');
@@ -236,7 +259,11 @@ $('pwInput').addEventListener('keydown', e=>{ if(e.key === 'Enter') $('pwBtn').c
 async function loadStudents(){
   $('listBody').innerHTML = '<div class="empty">불러오는 중이에요...</div>';
   try{
-    const snap = await db.collection('monsterDex').get();
+    const [snap, cfgSnap] = await Promise.all([
+      db.collection('monsterDex').get(),
+      db.collection('monsterConfig').doc('classes').get(),
+    ]);
+    classMap = cfgSnap.exists ? ((cfgSnap.data() || {}).map || {}) : {};
     students = [];
     snap.forEach(d=> students.push({id: d.id, data: d.data() || {}}));
     students.sort((a,b)=> String(a.data.studentNo||'').localeCompare(String(b.data.studentNo||''), 'ko', {numeric:true}));
@@ -249,12 +276,41 @@ async function loadStudents(){
 
 function filteredStudents(){
   const q = $('searchInput').value.trim().toLowerCase();
-  if(!q) return students;
-  return students.filter(s=>
-    String(s.data.studentNo||'').toLowerCase().includes(q) ||
-    String(s.data.studentName||'').toLowerCase().includes(q)
-  );
+  return students.filter(s=>{
+    if(classFilter === '1' && classMap[s.id] !== 1) return false;
+    if(classFilter === '2' && classMap[s.id] !== 2) return false;
+    if(classFilter === 'none' && classMap[s.id]) return false;
+    if(!q) return true;
+    return String(s.data.studentNo||'').toLowerCase().includes(q) ||
+           String(s.data.studentName||'').toLowerCase().includes(q);
+  });
 }
+
+/* ── 분반 지정: monsterConfig/classes 문서에 저장 (관찰 추리 사이트가 이 문서를 읽음) ── */
+async function setClass(id, val){
+  const prev = classMap[id];
+  const next = prev === val ? null : val; // 같은 버튼 다시 누르면 해제
+  try{
+    await db.collection('monsterConfig').doc('classes').set({
+      map: {[id]: next === null ? firebase.firestore.FieldValue.delete() : next},
+      updatedAt: Date.now(),
+    }, {merge: true});
+    if(next === null) delete classMap[id];
+    else classMap[id] = next;
+    renderList();
+  }catch(e){
+    console.error(e);
+    toast('분반 저장에 실패했어요. 인터넷 연결을 확인해주세요');
+  }
+}
+
+document.querySelectorAll('.filter-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    classFilter = chip.dataset.cf;
+    document.querySelectorAll('.filter-chip').forEach(c=> c.classList.toggle('on', c === chip));
+    renderList();
+  });
+});
 
 function progressBadge(data){
   const n = (data.stages || []).length;
@@ -285,6 +341,10 @@ function renderList(){
       <span class="who">${escapeHTML(d.studentNo||'?')} ${escapeHTML(d.studentName||'')}</span>
       <span class="monster">🐾 ${escapeHTML(monster)}</span>
       ${progressBadge(d)}
+      <span class="class-btns"><span class="cb-label">분반</span>
+        <button class="cbtn${classMap[s.id] === 1 ? ' on1' : ''}" data-act="cls1" title="1분반">1</button>
+        <button class="cbtn${classMap[s.id] === 2 ? ' on2' : ''}" data-act="cls2" title="2분반">2</button>
+      </span>
       <span class="meta">마지막 저장 ${fmtTime(d.updatedAt)}</span>
       <span class="row-btns">
         <button class="btn-sm mint" data-act="detail">👀 보기</button>
@@ -302,6 +362,8 @@ function renderList(){
       if(act === 'detail') toggleDetail(id);
       else if(act === 'pdf') exportOne(id);
       else if(act === 'del') deleteStudent(id);
+      else if(act === 'cls1') setClass(id, 1);
+      else if(act === 'cls2') setClass(id, 2);
     });
   });
   // 열려 있던 상세가 있으면 다시 그림
@@ -531,7 +593,8 @@ $('exportAllBtn').addEventListener('click', async ()=>{
     }
     const today = new Date().toISOString().slice(0,10);
     const q = $('searchInput').value.trim();
-    pdf.save(`몬스터도감${q ? '_' + cleanName(q) : ''}_전체제출본_${today}.pdf`);
+    const cfLabel = classFilter === '1' ? '_1분반' : classFilter === '2' ? '_2분반' : classFilter === 'none' ? '_분반미지정' : '';
+    pdf.save(`몬스터도감${cfLabel}${q ? '_' + cleanName(q) : ''}_전체제출본_${today}.pdf`);
     toast(`${list.length}명의 기록을 PDF 한 파일로 저장했어요`);
   }catch(e){
     console.error(e);
