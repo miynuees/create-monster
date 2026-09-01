@@ -276,6 +276,7 @@ button,input,textarea{font-family:inherit}
   <div class="toolbar">
     <div class="student-badge" id="studentBadge" style="display:none">
       <span id="studentBadgeText"></span>
+      <span id="syncStatus" style="display:none;font-size:10.5px;font-weight:700"></span>
       <button id="logoutBtn" title="다른 학생으로 전환">🚪 전환</button>
     </div>
     <div class="toolbar-actions" id="toolbarActions" style="display:none">
@@ -313,7 +314,7 @@ button,input,textarea{font-family:inherit}
   <section class="screen" id="screen-login">
     <div class="card" style="max-width:400px;margin:0 auto">
       <h2 class="title-font">🔑 연구원 등록</h2>
-      <p class="desc">학번과 이름을 입력하고 입장해주세요. 이전에 저장한 내용이 있으면 이어서 볼 수 있어요.</p>
+      <p class="desc">학번과 이름을 입력하고 입장해주세요. 작성한 내용은 서버에 저장돼서, 처음 입력한 학번·이름 그대로 입장하면 다른 기기에서도 이어서 할 수 있어요.</p>
       <div class="field">
         <label for="loginNo">학번</label>
         <input type="text" id="loginNo" placeholder="예: 20305">
@@ -438,6 +439,8 @@ button,input,textarea{font-family:inherit}
 
 <div class="toast" id="toast"></div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <script>
 const WORKER_URL = 'https://prompt-atelier-proxy.vercel.app';
 const MAX_STAGES = 2;
@@ -452,6 +455,185 @@ const FEEDBACK_TITLES = {keep:'그대로 살릴 점', fix:'고칠 점'};
 const blankFeedback = ()=>({keep:'',fix:''});
 
 const $ = id => document.getElementById(id);
+
+/* ── 서버 저장(Firebase): 학번+이름으로 로그인하면 어느 기기에서든 기록이 따라오게 ── */
+firebase.initializeApp({
+  apiKey: "AIzaSyBtSooSc-eg4zMHQ_QF-ErmYJmtaYT1Fkg",
+  authDomain: "limi-88231.firebaseapp.com",
+  projectId: "limi-88231",
+  messagingSenderId: "361025367626",
+  appId: "1:361025367626:web:19d4e19d54558d4a79c0b3"
+});
+const db = firebase.firestore();
+const CLOUD_COLLECTION = 'monsterDex';
+// 서버에서 이미지를 못 찾았을 때 빈칸 대신 보여줄 회색 그림
+const MISSING_IMAGE = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><rect width="400" height="400" fill="#EDEAF7"/><text x="200" y="200" text-anchor="middle" font-size="20" fill="#6E6482" font-family="sans-serif">이미지를 불러오지 못했어요</text></svg>');
+
+function cloudId(key){
+  return String(key).replace(/[\/#$\[\].]/g, '_');
+}
+function cloudDoc(key){
+  return db.collection(CLOUD_COLLECTION).doc(cloudId(key));
+}
+function withTimeout(promise, ms){
+  return Promise.race([promise, new Promise((_, rej)=> setTimeout(()=> rej(new Error('서버 응답이 너무 늦어요')), ms))]);
+}
+// 진행 상황 점수: 단계 수 > 시도 수 > 입력한 글 유무 순으로 어느 기록이 더 앞서 있는지 비교
+function progressScore(stages, fields){
+  const attempts = (stages || []).reduce((n, s)=> n + ((s.attempts && s.attempts.length) || (s.image ? 1 : 0)), 0);
+  const hasText = FIELD_KEYS.some(k => ((fields || {})[k] || '').trim()) ? 1 : 0;
+  return (stages || []).length * 1000 + attempts * 10 + hasText;
+}
+// 서버엔 용량 제한(문서당 1MB)이 있어서 이미지를 적당한 크기의 JPEG로 줄여서 올림
+function shrinkForCloud(dataUri){
+  return new Promise(resolve=>{
+    if(!dataUri || !dataUri.startsWith('data:')) return resolve(dataUri || '');
+    const img = new Image();
+    img.onload = ()=>{
+      try{
+        const max = 768;
+        const w0 = img.width || max, h0 = img.height || max;
+        const scale = Math.min(1, max / Math.max(w0, h0));
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(w0 * scale));
+        c.height = Math.max(1, Math.round(h0 * scale));
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        let out = c.toDataURL('image/jpeg', .85);
+        if(out.length > 900000) out = c.toDataURL('image/jpeg', .6);
+        if(out.length > 950000) return resolve('');
+        resolve(out.length < dataUri.length ? out : (dataUri.length <= 950000 ? dataUri : out));
+      }catch(e){ resolve(dataUri.length <= 950000 ? dataUri : ''); }
+    };
+    img.onerror = ()=> resolve(dataUri.length <= 950000 ? dataUri : '');
+    img.src = dataUri;
+  });
+}
+
+let localUpdatedAt = 0;      // 이 기기에 마지막으로 저장한 시각
+let uploadedImages = new Set(); // 이번 로그인에서 서버에 이미 올라간 이미지 표시
+let lastPushedJson = null;   // 같은 내용을 반복해서 올리지 않게 마지막 전송본 기억
+let pushTimer = null;
+let pushing = false;
+let pushQueued = false;
+
+function setSync(mode){
+  const el = $('syncStatus');
+  if(!el) return;
+  const map = {
+    off:   ['', ''],
+    pending: ['☁️ 저장 대기', '#6E6482'],
+    saving:  ['☁️ 서버에 저장 중…', '#6E6482'],
+    ok:      ['☁️ 서버에 저장됨', '#0EA790'],
+    fail:    ['⚠️ 서버 저장 실패 · 자동 재시도', '#D8452E'],
+  };
+  const [text, color] = map[mode] || map.off;
+  el.textContent = text;
+  el.style.color = color;
+  el.style.display = text ? 'inline' : 'none';
+}
+
+function buildCloudPayload(){
+  return {
+    studentNo: state.studentNo,
+    studentName: state.studentName,
+    fields: state.fields,
+    changeNote: state.changeNote,
+    feedback: state.feedback,
+    stages: state.stages.map(s=>({
+      fields: s.fields,
+      changeNote: s.changeNote || '',
+      keepNote: s.keepNote || '',
+      fixNote: s.fixNote || '',
+      worldbuilding: s.worldbuilding || '',
+      prompt: s.prompt || '',
+      pickedIndex: s.pickedIndex !== undefined ? s.pickedIndex : s.attempts.length - 1,
+      attemptCount: s.attempts.length,
+    })),
+  };
+}
+
+function scheduleCloudPush(){
+  if(!studentKey || isDemo) return;
+  setSync('pending');
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushToCloud, 3000);
+}
+
+async function pushToCloud(){
+  if(!studentKey || isDemo) return;
+  if(pushing){ pushQueued = true; return; }
+  const key = studentKey;
+  // 지금 이 순간의 내용을 붙잡아두고 전송 (전송 도중 입력이 바뀌어도 안 섞이게)
+  const payload = buildCloudPayload();
+  const pendingImages = [];
+  state.stages.forEach((st, i)=> st.attempts.forEach((img, j)=>{
+    const id = `s${i}_a${j}`;
+    if(!uploadedImages.has(id)) pendingImages.push({id, img});
+  }));
+  const payloadJson = JSON.stringify(payload);
+  if(pendingImages.length === 0 && payloadJson === lastPushedJson){ setSync('ok'); return; }
+
+  pushing = true;
+  const upSet = uploadedImages; // 전송 도중 다른 학생으로 바뀌어도 원래 학생의 목록에만 표시
+  if(studentKey === key) setSync('saving');
+  try{
+    for(const {id, img} of pendingImages){
+      const small = await shrinkForCloud(img);
+      await cloudDoc(key).collection('images').doc(id).set({data: small});
+      upSet.add(id);
+    }
+    await cloudDoc(key).set(Object.assign({updatedAt: Date.now()}, payload));
+    if(studentKey === key){
+      lastPushedJson = payloadJson;
+      setSync('ok');
+    }
+  }catch(e){
+    console.error('서버 저장 실패', e);
+    if(studentKey === key){
+      setSync('fail');
+      clearTimeout(pushTimer);
+      pushTimer = setTimeout(pushToCloud, 20000); // 인터넷이 돌아오면 자동으로 다시 저장
+    }
+  }finally{
+    pushing = false;
+    if(pushQueued){ pushQueued = false; scheduleCloudPush(); }
+  }
+}
+
+async function fetchCloud(key){
+  const snap = await withTimeout(cloudDoc(key).get(), 8000);
+  if(!snap.exists) return null;
+  const data = snap.data() || {};
+  // 이미지를 못 받아오면 서버 기록을 쓰지 않음 (기기에 있는 진짜 그림을 회색 그림으로 덮지 않게)
+  const images = {};
+  const imgSnap = await withTimeout(cloudDoc(key).collection('images').get(), 15000);
+  imgSnap.forEach(d=>{ images[d.id] = (d.data() || {}).data || ''; });
+  const stages = (data.stages || []).map((meta, i)=>{
+    const attempts = [];
+    for(let j = 0; j < (meta.attemptCount || 0); j++){
+      attempts.push(images[`s${i}_a${j}`] || MISSING_IMAGE);
+    }
+    return {
+      fields: Object.assign(emptyFields(), meta.fields),
+      changeNote: meta.changeNote || '', keepNote: meta.keepNote || '', fixNote: meta.fixNote || '',
+      worldbuilding: meta.worldbuilding || '', prompt: meta.prompt || '',
+      pickedIndex: meta.pickedIndex, attempts,
+    };
+  });
+  return {data, stages, imageIds: Object.keys(images)};
+}
+
+async function deleteCloudData(key){
+  const ref = cloudDoc(key);
+  const imgSnap = await withTimeout(ref.collection('images').get(), 15000);
+  const batch = db.batch();
+  imgSnap.forEach(d=> batch.delete(d.ref));
+  batch.delete(ref);
+  await withTimeout(batch.commit(), 15000);
+}
 
 let state = {
   studentNo: '',
@@ -471,6 +653,7 @@ function fieldsStorageKey(){
   return 'monsterDexFields_' + studentKey;
 }
 function loadFields(){
+  localUpdatedAt = 0;
   try{
     const raw = localStorage.getItem(fieldsStorageKey());
     if(!raw) return;
@@ -478,15 +661,19 @@ function loadFields(){
     if(parsed.fields) state.fields = Object.assign(emptyFields(), parsed.fields);
     if(typeof parsed.changeNote === 'string') state.changeNote = parsed.changeNote;
     if(parsed.feedback) state.feedback = Object.assign(blankFeedback(), parsed.feedback);
+    if(typeof parsed.updatedAt === 'number') localUpdatedAt = parsed.updatedAt;
   }catch(e){}
 }
 function saveFields(){
   if(isDemo) return;
+  localUpdatedAt = Date.now();
   try{
     localStorage.setItem(fieldsStorageKey(), JSON.stringify({
       fields: state.fields, changeNote: state.changeNote, feedback: state.feedback,
+      updatedAt: localUpdatedAt,
     }));
   }catch(e){}
+  scheduleCloudPush();
 }
 
 const DB_NAME = 'monsterDexDB';
@@ -528,6 +715,7 @@ async function saveStages(){
     console.error(e);
     toast('이미지 저장에 실패했어요. 새로고침하면 이 이미지가 사라질 수 있어요.');
   }
+  scheduleCloudPush();
 }
 async function clearStages(){
   try{
@@ -614,13 +802,57 @@ async function loginSubmit(){
   const no = $('loginNo').value.trim();
   const name = $('loginName').value.trim();
   if(!no || !name){ toast('학번과 이름을 모두 입력해주세요'); return; }
+  if(busy) return;
+
+  const btn = $('loginBtn');
+  busy = true;
+  btn.disabled = true;
+  btn.classList.add('spinning');
+  btn.textContent = '저장된 기록을 확인하는 중이에요...';
 
   studentKey = sanitizeKey(no, name);
   state.studentNo = no;
   state.studentName = name;
+  uploadedImages = new Set();
+  lastPushedJson = null;
 
+  // 1) 이 기기에 남아 있는 기록부터 읽고
   loadFields();
   state.stages = migrateStages(await loadStages()).slice(0, MAX_STAGES);
+
+  // 2) 서버 기록과 비교해서 더 진행된 쪽을 사용
+  let source = state.stages.length || progressScore([], state.fields) ? 'local' : 'new';
+  try{
+    const cloud = await fetchCloud(studentKey);
+    if(cloud){
+      const cloudScore = progressScore(cloud.stages, cloud.data.fields);
+      const localScore = progressScore(state.stages, state.fields);
+      const cloudNewer = (cloud.data.updatedAt || 0) > localUpdatedAt;
+      if(cloudScore > localScore || (cloudScore === localScore && cloudScore > 0 && cloudNewer)){
+        state.fields = Object.assign(emptyFields(), cloud.data.fields);
+        state.changeNote = cloud.data.changeNote || '';
+        state.feedback = Object.assign(blankFeedback(), cloud.data.feedback);
+        state.stages = migrateStages(cloud.stages).slice(0, MAX_STAGES);
+        cloud.imageIds.forEach(id=> uploadedImages.add(id));
+        source = 'cloud';
+        lastPushedJson = JSON.stringify(buildCloudPayload()); // 방금 받은 내용을 곧바로 되올리지 않게
+        saveFields();       // 서버 기록을 이 기기에도 복사해둠 (다음부턴 인터넷 없어도 보이게)
+        await saveStages();
+      }else if(localScore > 0){
+        scheduleCloudPush(); // 이 기기 기록이 더 앞서 있으면 서버로 올려둠
+      }
+    }else if(source === 'local'){
+      scheduleCloudPush();  // 서버에 아직 없는 기록은 올려둠
+    }
+    if(source !== 'new') setSync('ok');
+  }catch(e){
+    console.error('서버 확인 실패', e);
+    source = state.stages.length ? 'offline' : source;
+    setSync('fail');
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(pushToCloud, 20000);
+  }
+
   bindFieldInputs();
   renderCurrentScreens();
   updateStudentBadge();
@@ -631,12 +863,22 @@ async function loginSubmit(){
   else if(state.stages.length === 1) goTo('firstResult');
   else goTo('final');
 
-  toast(state.stages.length ? '이전에 저장한 내용을 불러왔어요' : '환영해요! 새로 시작해요');
+  busy = false;
+  btn.disabled = false;
+  btn.classList.remove('spinning');
+  btn.textContent = '🚪 입장하기';
+
+  if(source === 'cloud') toast('서버에 저장된 기록을 불러왔어요');
+  else if(source === 'local') toast('이전에 저장한 내용을 불러왔어요');
+  else if(source === 'offline') toast('서버 연결이 안 돼서 이 기기에 있는 기록으로 시작해요');
+  else toast('환영해요! 새로 시작해요');
 }
 
 function logout(){
   if(isDemo){ demoEnd(); return; }
   if(!confirm('다른 학생으로 전환할까요? 지금까지 작성한 내용은 그대로 저장돼 있어요.')) return;
+  if(pushTimer){ clearTimeout(pushTimer); pushToCloud(); } // 아직 서버에 안 올라간 내용이 있으면 마저 올리고 전환
+  setSync('off');
   studentKey = null;
   state = {
     studentNo: '', studentName: '',
@@ -1164,6 +1406,8 @@ async function backupLoad(file){
     state.studentNo = backup.studentNo || state.studentNo;
     state.studentName = backup.studentName || state.studentName;
     studentKey = sanitizeKey(state.studentNo, state.studentName);
+    uploadedImages = new Set(); // 파일에서 불러온 내용은 서버에 처음부터 다시 올림
+    lastPushedJson = null;
     state.fields = Object.assign(emptyFields(), backup.fields);
     state.changeNote = backup.changeNote || '';
     state.feedback = Object.assign(blankFeedback(), backup.feedback || {});
@@ -1312,13 +1556,23 @@ $('backupFileInput').addEventListener('change', (e)=>{
 });
 $('resetBtn').addEventListener('click', async ()=>{
   if(isDemo){ toast('예시 모드에서는 지울 내용이 없어요'); return; }
-  if(!confirm('지금까지 입력한 설정과 그려진 이미지가 모두 사라져요. 처음부터 다시 시작할까요?')) return;
+  if(!confirm('지금까지 입력한 설정과 그려진 이미지가 모두 사라져요. (서버에 저장된 기록도 함께 지워져요) 처음부터 다시 시작할까요?')) return;
   state.fields = emptyFields();
   state.changeNote = '';
   state.feedback = blankFeedback();
   state.stages = [];
   localStorage.removeItem(fieldsStorageKey());
+  clearTimeout(pushTimer);
+  uploadedImages = new Set();
+  lastPushedJson = null;
   await clearStages();
+  try{
+    await deleteCloudData(studentKey);
+    setSync('off');
+  }catch(e){
+    console.error('서버 기록 삭제 실패', e);
+    toast('서버에 저장된 기록은 지우지 못했어요. 인터넷 연결을 확인해주세요');
+  }
   bindFieldInputs();
   renderCurrentScreens();
   goTo('design');
