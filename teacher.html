@@ -187,12 +187,12 @@ button,input{font-family:inherit}
     </div>
     <div class="toolbar" style="margin-bottom:8px">
       <button class="filter-chip on" data-cf="all">전체</button>
-      <button class="filter-chip" data-cf="1">1분반</button>
-      <button class="filter-chip" data-cf="2">2분반</button>
+      <button class="filter-chip" data-cf="1">A반</button>
+      <button class="filter-chip" data-cf="2">E반</button>
       <button class="filter-chip" data-cf="none">분반 미지정</button>
     </div>
     <p style="font-size:11.5px;color:var(--sub);margin:0 0 14px;line-height:1.6">
-      💡 각 학생의 <b>1·2 동그라미 버튼</b>으로 분반을 지정해요 (다시 누르면 해제). 지정하면 관찰 추리 사이트에서 학생들에게 <b>다른 분반의 몬스터만</b> 나와요.<br>
+      💡 각 학생의 <b>A·E 동그라미 버튼</b>으로 분반을 지정해요 (다시 누르면 해제). 지정하면 관찰 추리 사이트에서 학생들에게 <b>다른 분반의 몬스터만</b> 나와요.<br>
       💡 분반 버튼이나 검색으로 목록을 좁힌 뒤 "목록 전체 PDF 저장"을 누르면 그 학생들만 한 파일로 저장돼요.
     </p>
     <div id="listBody"></div>
@@ -342,8 +342,8 @@ function renderList(){
       <span class="monster">🐾 ${escapeHTML(monster)}</span>
       ${progressBadge(d)}
       <span class="class-btns"><span class="cb-label">분반</span>
-        <button class="cbtn${classMap[s.id] === 1 ? ' on1' : ''}" data-act="cls1" title="1분반">1</button>
-        <button class="cbtn${classMap[s.id] === 2 ? ' on2' : ''}" data-act="cls2" title="2분반">2</button>
+        <button class="cbtn${classMap[s.id] === 1 ? ' on1' : ''}" data-act="cls1" title="A반">A</button>
+        <button class="cbtn${classMap[s.id] === 2 ? ' on2' : ''}" data-act="cls2" title="E반">E</button>
       </span>
       <span class="meta">마지막 저장 ${fmtTime(d.updatedAt)}</span>
       <span class="row-btns">
@@ -593,7 +593,7 @@ $('exportAllBtn').addEventListener('click', async ()=>{
     }
     const today = new Date().toISOString().slice(0,10);
     const q = $('searchInput').value.trim();
-    const cfLabel = classFilter === '1' ? '_1분반' : classFilter === '2' ? '_2분반' : classFilter === 'none' ? '_분반미지정' : '';
+    const cfLabel = classFilter === '1' ? '_A반' : classFilter === '2' ? '_E반' : classFilter === 'none' ? '_분반미지정' : '';
     pdf.save(`몬스터도감${cfLabel}${q ? '_' + cleanName(q) : ''}_전체제출본_${today}.pdf`);
     toast(`${list.length}명의 기록을 PDF 한 파일로 저장했어요`);
   }catch(e){
