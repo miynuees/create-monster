@@ -796,7 +796,7 @@ function buildPrompt(fields, notes, isEvolution){
   const translate = isEvolution && (n.translate || '').trim();
 
   if(keep || fix || translate){
-    const parts = ['이전 이미지의 생명체를 기반으로, 아래 내용을 반영해서 다시 그려주세요. 화풍이나 분위기는 그대로 유지해주세요.'];
+    const parts = ['이전 이미지의 생명체를 기반으로, 아래 내용을 반영해서 다시 그려주세요. 같은 생명체를 다시 그리는 것이니, 아래에서 언급하지 않은 색·생김새·화풍은 이전 이미지 그대로 유지해주세요.'];
     if(keep) parts.push(`\n[그대로 살릴 점 — 이전 이미지에서 마음에 든 부분이니 바꾸지 말고 유지해주세요]\n${keep}`);
     if(fix) parts.push(`\n[고칠 점 — 이전 이미지에서 이 부분을 아래 내용대로 수정해주세요]\n${fix}`);
     if(translate) parts.push(`\n[시각적 번역 — 이 내용이 생명체의 모습에 실제로 드러나도록 그려주세요]\n${translate}`);
