@@ -97,30 +97,40 @@ button,input{font-family:inherit}
 }
 
 .student-row{
-  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
-  background:#fff;border:2.5px solid var(--ink);border-radius:16px;
-  padding:12px 16px;margin-bottom:10px;box-shadow:var(--shadow-sm);
+  display:flex;align-items:center;gap:10px;flex-wrap:nowrap;
+  background:#fff;border:2px solid var(--ink);border-radius:12px;
+  padding:8px 12px;margin-bottom:7px;
 }
-.student-row .who{font-weight:800;font-size:14px;min-width:120px}
-.student-row .monster{color:var(--violet-dark);font-weight:700;font-size:13px;flex:1;min-width:100px}
-.student-row .meta{color:var(--sub);font-size:11.5px;min-width:150px}
+.student-row .who{font-weight:800;font-size:13px;flex:none;white-space:nowrap}
+.student-row .monster{
+  color:var(--violet-dark);font-weight:700;font-size:12.5px;
+  flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.student-row .meta{color:var(--sub);font-size:10.5px;flex:none;white-space:nowrap}
 .badge{
-  display:inline-block;border:2px solid var(--ink);border-radius:99px;
-  font-size:10.5px;font-weight:800;padding:3px 9px;
+  flex:none;border:1.5px solid var(--ink);border-radius:99px;
+  font-size:10px;font-weight:800;padding:2px 8px;white-space:nowrap;
 }
 .badge.s0{background:#F1EEF9;color:var(--sub)}
 .badge.s1{background:var(--violet-3);color:var(--violet-dark)}
 .badge.s2{background:var(--mint-3);color:var(--mint-dark)}
-.row-btns{display:flex;gap:6px;flex-wrap:wrap}
-.class-btns{display:flex;gap:4px;align-items:center}
-.class-btns .cb-label{font-size:10.5px;color:var(--sub);font-weight:700;margin-right:2px}
-.cbtn{
-  width:28px;height:28px;border:2px solid var(--ink);border-radius:50%;background:#fff;
-  font-size:11px;font-weight:800;color:var(--sub);cursor:pointer;transition:.12s;padding:0;
+.row-btns{display:flex;gap:1px;flex:none}
+.ibtn{
+  border:none;background:none;font-size:15px;padding:4px 5px;cursor:pointer;
+  border-radius:8px;line-height:1;transition:.12s;
 }
-.cbtn:hover{transform:translateY(-1px)}
-.cbtn.on1{background:var(--mint);color:#fff}
-.cbtn.on2{background:var(--violet);color:#fff}
+.ibtn:hover{background:var(--violet-3);transform:translateY(-1px)}
+.class-btns{display:flex;gap:3px;align-items:center;flex:none}
+.cbtn{
+  width:24px;height:24px;border:1.5px solid var(--line);border-radius:50%;background:#fff;
+  font-size:10px;font-weight:800;color:var(--sub);cursor:pointer;transition:.12s;padding:0;
+}
+.cbtn:hover{border-color:var(--ink);transform:translateY(-1px)}
+.cbtn.on1{background:var(--mint);border-color:var(--ink);color:#fff}
+.cbtn.on2{background:var(--violet);border-color:var(--ink);color:#fff}
+@media (max-width:640px){
+  .student-row .meta{display:none}
+}
 .filter-chip{
   border:2px solid var(--ink);border-radius:99px;background:#fff;color:var(--ink);
   font-size:12px;font-weight:700;padding:7px 14px;cursor:pointer;transition:.12s;white-space:nowrap;
@@ -314,9 +324,9 @@ document.querySelectorAll('.filter-chip').forEach(chip=>{
 
 function progressBadge(data){
   const n = (data.stages || []).length;
-  if(n >= 2) return '<span class="badge s2">소환 완료</span>';
-  if(n === 1) return '<span class="badge s1">1차 소환</span>';
-  return '<span class="badge s0">입력만</span>';
+  if(n >= 2) return '<span class="badge s2" title="소환 완료">완료</span>';
+  if(n === 1) return '<span class="badge s1" title="1차 소환까지 진행">1차</span>';
+  return '<span class="badge s0" title="설정 입력만 한 상태">입력</span>';
 }
 
 function fmtTime(ts){
@@ -341,15 +351,15 @@ function renderList(){
       <span class="who">${escapeHTML(d.studentNo||'?')} ${escapeHTML(d.studentName||'')}</span>
       <span class="monster">🐾 ${escapeHTML(monster)}</span>
       ${progressBadge(d)}
-      <span class="class-btns"><span class="cb-label">분반</span>
-        <button class="cbtn${classMap[s.id] === 1 ? ' on1' : ''}" data-act="cls1" title="A반">A</button>
-        <button class="cbtn${classMap[s.id] === 2 ? ' on2' : ''}" data-act="cls2" title="E반">E</button>
+      <span class="class-btns">
+        <button class="cbtn${classMap[s.id] === 1 ? ' on1' : ''}" data-act="cls1" title="A반으로 지정">A</button>
+        <button class="cbtn${classMap[s.id] === 2 ? ' on2' : ''}" data-act="cls2" title="E반으로 지정">E</button>
       </span>
-      <span class="meta">마지막 저장 ${fmtTime(d.updatedAt)}</span>
+      <span class="meta" title="마지막 저장 시각">${fmtTime(d.updatedAt)}</span>
       <span class="row-btns">
-        <button class="btn-sm mint" data-act="detail">👀 보기</button>
-        <button class="btn-sm violet" data-act="pdf">📄 PDF</button>
-        <button class="btn-sm danger" data-act="del">🗑️</button>
+        <button class="ibtn" data-act="detail" title="자세히 보기">👀</button>
+        <button class="ibtn" data-act="pdf" title="제출용 PDF 저장">📄</button>
+        <button class="ibtn" data-act="del" title="서버 기록 삭제">🗑️</button>
       </span>
     </div>
     <div class="detail" id="detail-${escapeHTML(s.id)}" style="display:none"></div>`;
