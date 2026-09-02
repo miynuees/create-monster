@@ -991,6 +991,7 @@ function renderFinal(){
     ${stage.fixNote ? `<p class="result-summary"><b>고칠 점</b> ${escapeHTML(stage.fixNote)}</p>` : ''}
     ${stage.worldbuilding ? `<p class="result-summary"><b>확장된 세계관</b><br>${escapeHTML(stage.worldbuilding).replace(/\n/g,'<br>')}</p>` : ''}
     ${stage.changeNote ? `<p class="result-summary"><b>시각적 번역</b> ${escapeHTML(stage.changeNote)}</p>` : ''}
+    <p class="result-summary">${fieldSummaryHTML(stage.fields)}</p>
     <div class="stage-actions">
       <span class="btn-download" data-idx="1">💾 이미지 저장하기</span>
       <button class="btn-retry" id="retryBtn2">🔄 마음에 안 들면 다시 그리기</button>
@@ -1229,7 +1230,7 @@ function stageSectionHTML(stage, i){
     ${stage.fixNote ? `<p style="background:#E1FBF5;color:#2B2140;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.7;margin:0 0 10px"><b style="color:#0EA790">고칠 점</b> ${escapeHTML(stage.fixNote)}</p>` : ''}
     ${stage.worldbuilding ? `<p style="background:#E1FBF5;color:#2B2140;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.7;margin:0 0 10px;white-space:pre-wrap"><b style="color:#0EA790">확장된 세계관</b>\n${escapeHTML(stage.worldbuilding)}</p>` : ''}
     ${stage.changeNote ? `<p style="background:#F1E9FF;color:#2B2140;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.7;margin:0 0 10px"><b style="color:#7440E0">시각적 번역</b> ${escapeHTML(stage.changeNote)}</p>` : ''}
-    ${i === 0 ? `<div style="margin:0 0 4px">${fieldDetailHTML(stage.fields)}</div>` : ''}
+    <div style="margin:0 0 4px">${fieldDetailHTML(stage.fields)}</div>
     ${promptBoxHTML(stage)}
     ${attemptsFiguresHTML(stage)}`;
 }
