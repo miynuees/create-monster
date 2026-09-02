@@ -991,7 +991,6 @@ function renderFinal(){
     ${stage.fixNote ? `<p class="result-summary"><b>고칠 점</b> ${escapeHTML(stage.fixNote)}</p>` : ''}
     ${stage.worldbuilding ? `<p class="result-summary"><b>확장된 세계관</b><br>${escapeHTML(stage.worldbuilding).replace(/\n/g,'<br>')}</p>` : ''}
     ${stage.changeNote ? `<p class="result-summary"><b>시각적 번역</b> ${escapeHTML(stage.changeNote)}</p>` : ''}
-    <p class="result-summary">${fieldSummaryHTML(stage.fields)}</p>
     <div class="stage-actions">
       <span class="btn-download" data-idx="1">💾 이미지 저장하기</span>
       <button class="btn-retry" id="retryBtn2">🔄 마음에 안 들면 다시 그리기</button>
